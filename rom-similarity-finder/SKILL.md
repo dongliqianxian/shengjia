@@ -137,8 +137,9 @@ python scripts/rom_similarity.py query --bin UNKNOWN.bin --top 20 --verify 5
 ## 4. 用法
 
 ```bash
-# 建索引(增量:mtime 没变的跳过,可反复跑)
+# 建索引(增量:mtime 没变的跳过,可反复跑;多个目录可加进同一个库)
 python scripts/rom_similarity.py index --lib E:/ECU_Tuning_Projects
+python scripts/rom_similarity.py index --lib DIR --workers 8        # 大库用多进程
 python scripts/rom_similarity.py index --lib DIR --ext bin,ori,mod,rom --max-mb 64
 
 # 查询
@@ -153,7 +154,12 @@ python scripts/rom_similarity.py --selftest   # 19 项自测
 ```
 
 索引默认落在 `~/.claude/rom_index.sqlite`,约 **1KB/文件**,10 万个文件约 100MB。
-实测吞吐约 **10 MB/s**(单线程),2MB 的 bin 约 5 个/秒。
+实测吞吐约 **10 MB/s**(单线程),2MB 的 bin 约 5 个/秒;`--workers N` 近线性加速
+(实测并行与串行指纹**逐字节一致**,45/45)。**只有主进程写 SQLite**,不会有并发写锁。
+
+> `.hex` / `.s19` 是 **ASCII 文本**格式(Intel HEX / S-record)。同格式之间可比,
+> 但**与 `.bin` 互相测不出相似** —— 同一份 ROM 的 bin 与 hex 字节完全不同。
+> 要索引它们请**单独建库**(`--ext hex,s19 --db other.sqlite`),别和 bin 混在一起。
 
 ---
 
@@ -176,7 +182,24 @@ python scripts/rom_similarity.py --selftest   # 19 项自测
 
 ---
 
-## 6. 与其他技能的衔接
+## 6. 出处与许可
+
+算法设计派生自 **romHEX14 Community Edition**（`ctabuyo/romHEX14-community`，
+commit `b98538fe`，`src/io/winols/RomFingerprint.h` 等），
+**Copyright (C) 2026 Cristian Tabuyo，GPL-3.0-or-later**。
+`scripts/rom_similarity.py` 为独立重写，同样以 GPL-3.0-or-later 分发。
+
+完整出处、上游原文要点、以及**本实现与上游唯一一处有意分歧**（containment 的集合大小：
+上游用剥填充后尺寸，本实现用估计 distinct 基数）见
+[references/algorithm-source.md](references/algorithm-source.md)。
+
+> 核实提示：该仓库根目录无 LICENSE 文件，GitHub API 会报 `license: null`。
+> 许可声明在 `NOTICES.md` 与 `README.md §License` 正文中，已逐条核实。
+> **别因为 API 说没许可就当无许可。**
+
+---
+
+## 7. 与其他技能的衔接
 
 ```
 陌生 bin
