@@ -93,6 +93,25 @@ Produce, with **zero vague language** (doctrine §7 输出纪律):
 
 > *依据 `ecu-calibration-doctrine/references/re-discipline.md` 第四节「功能判定的实验方法」4.1/4.2；实证来源 TomFLV/5eat 与 CSS-Electronics/can-bus-reverse-engineering-skills。*
 
+## 数值合理性自检（三条廉价启发式，doctrine §14 物理边界速查）
+
+**改之前跑一遍判「这表现在正不正常」，改之后再跑一遍判「我有没有改坏」。** 三条都是几行代码的事：
+
+1. **全平** —— 值域 `range < 1e-9` 且格数 > 4 → **该表可能已被禁用或清零**。
+   原厂表极少全平；碰到全平，先问「是不是上一手把它拍平了」，别当原厂设计解读。
+2. **离群格** —— 偏离均值 **> 3σ** 的孤立格。标定表里的孤立尖峰几乎总是错的
+   （doctrine §3 数值锚点：3D 下的尖锐断层几乎一定在掩盖别的问题）。
+3. **触碰 raw 整数上限** —— 值等于 `0xFF` / `0xFFFF` / `0xFFFFFFFF`
+   （有符号再查 `rawMax/2+1`）→ **可能已溢出回绕**。
+   这是改完最容易犯又最难发现的错：**工程值看着合理，raw 已经绕回去了**。
+   抬扭矩上限、抬增压目标时尤其常见。
+
+单位合理性对照 doctrine §14.1；注意 **「deg」必须按角色分开钳制**
+（点火提前角 −30–70 / 凸轮相位 0–60 / 节气门 0–90）—— 只看单位字符串会把三种量混为一谈。
+
+> 判据来源：开源 ECU 工具 romHEX14 的 `detect_anomalies` / `validate_map_changes`。
+> **证据 B 级 高概率推断** —— 判据本身合理且可复现，但阈值未经本体系实车验证。
+
 ## Output format
 - Lead with the role classification — it frames everything.
 - Use the doctrine HTML color-block grid for the map (绿=推荐改 / 黄=谨慎 / 红=禁激进 / 灰=不建议),

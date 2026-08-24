@@ -34,6 +34,12 @@ never from the filename alone.
 
 ---
 
+> **与 `rom-similarity-finder` 的分界(互补,不重叠)**:本技能按**标识符**找 ——
+> 文件名、协议、MCU、平台、硬件号/软件号。`rom-similarity-finder` 按**文件内容本身**找 ——
+> 字节级指纹,不看名字、不看后缀、不需要任何元数据,**改过名或去过容器头的文件照样能配上**。
+> 两者结果**互为印证**:都指向同一个文件时置信度最高;只有一边命中时,以内容匹配为准
+> (文件名不是证据 —— 本技能自己也这么规定)。
+
 ## Step 0 — Detect environment and capability
 
 Before anything, determine whether you can read the library directory.
