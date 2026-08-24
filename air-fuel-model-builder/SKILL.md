@@ -36,6 +36,17 @@ Any broken link makes every downstream edit rest on a lie. Diagnose left-to-righ
 6. **负荷压在 ≤60%** — 过浓久了洗缸伤活塞环，过稀抬排温伤气门/歧管/催化器。
 7. **无台架 → 只能缩放不能重塑形状**（doctrine §9 无台架降级）：路试稳态点抽样 + 趋势外推，
    **必须标注哪些 cell 是实测、哪些是外推**。
+   *路上具体怎么造稳态点*（定档位、稳住油门开度、平路巡航/缓坡/轻拖挂扫负荷区）见
+   `ecu-calibration-doctrine/references/procedure.md` ⑤ 节。
+   需要逐格重塑的结论一律标注「**需台架**」，不要硬给数字。
+
+**修正数学（起手就该记住，λ 目标 = 1 时最简）**
+```
+修正系数   = 实测λ / 目标λ
+新空气值   = 修正系数 × 旧空气值
+λ目标=1 时： 新空气值 = 实测λ × 旧空气值
+```
+这正是**为什么第 2 条要把 λ 目标拉平** —— 目标恒定，修正系数才算得干净。
 
 > **VE 轴断点规划**（常被忽略）：分辨率要花在**效率变化最快的地方**（刚离开怠速那一段），
 > 不是均匀铺开。大凸轮只能拉到 55 kPa 真空时，10/20/30/40 kPa 那几列是浪费——
@@ -73,7 +84,7 @@ factor; do NOT touch injector deadtime or its voltage-compensation curve** (thos
 flow-proportional). This is the same rule `winols-scaling-converter` enforces. Route raw↔engineering
 of the MAF/injector tables to `winols-scaling-converter` (or the bin engines); do the *physics* here.
 
-## 4. Injector characterization (golden order ②)
+## 4. Injector characterization (golden order ②，**必须先于 ⑤ 空气建模**)
 Get these into the ECU *before* modeling air, or the air model will absorb injector error:
 - **Static flow** (cc/min or g/s at reference pressure) — rescale for actual fuel pressure:
   `flow_actual = flow_ref × sqrt(P_actual / P_ref)`.
