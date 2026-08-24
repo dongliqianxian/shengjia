@@ -148,7 +148,7 @@ description: >
 - [ ] **EGT/CAT 热模型**：保护阈值是否与新功率目标匹配？是否会提前介入拉功率？
 - [ ] **VE 偏差 → λ 漂移**：改件后 VE 假设是否仍成立？
 - [ ] **Driver Demand 合理性**：踏板→扭矩需求映射是否校验？
-- [ ] **空气建模误差 ≤ ±3%**（Banish 标准）
+- [ ] **空气建模误差达标并写明档位**（<5% 可接受 / <3% 理想 / <1% OEM，Banish；见 §3 数值锚点）
 - [ ] **校验和**：checksum/CRC 是否已重算？（未算=文件未完成，常导致 no-start）
 
 ---
@@ -160,10 +160,10 @@ description: >
 | 执行技能 | 本 doctrine 强加的约束 |
 |---|---|
 | `ecu-map-analysis` | 拆解单表时必须定位它在"输入→建模→输出"链中的角色（主控/限制器/修正量），并指出它依赖的上游空气模型是否可信。 |
-| `air-fuel-model-builder` | 空气建模是第一优先级（原则#3）：任何 load/torque/spark 结论前先确认 VE/MAF 模型 ±3%（Banish）、MAF/MAP 未超量程、喷油器 duty 未打满；先部分负荷后 WOT（黄金顺序④⑤⑥）。 |
+| `air-fuel-model-builder` | 空气建模是第一优先级（原则#3）：任何 load/torque/spark 结论前先确认 VE/MAF 模型达标档位（<5% 可接受 / <3% 理想 / <1% OEM，Banish）、MAF/MAP 未超量程、喷油器 duty 未打满；先部分负荷后 WOT（黄金顺序④⑤⑥）。 |
 | `torque-model-builder` | 建模层另一半（air-fuel-model-builder 的姊妹）：扭矩基础控制结构的**第一性原理方法论**（逆/正扭矩模型、扭矩储备、Level1-3 监控、抬扭须整条路径一致）。**强制空气优先**——逆扭矩模型输出是负荷目标，空气模型不可信先交 air-fuel-model-builder，不在坏空气模型上谈扭矩；各厂命名/限制器顺序交 `oem-strategy-library`，矩阵交 `stage1-calibration-matrix`，代码里找监控例程交 `ghidra-tricore-disasm`。 |
 | `closed-loop-control` | 控制层（与建模层平行）：**前馈(开环基础表) vs 反馈(闭环修正)分解**的方法论，落地黄金顺序第⑪步（trim<3%）。核心讲闭环如何吸收/掩盖/对抗基础表改动、trim 归账（把修正搬回基础表）、PID 行为（过冲/windup/权限饱和）、自适应快慢环与清值纪律。前置空气优先（trim 先排除传感器/MAF 误差）；不建 plant（air-fuel-model-builder）、不诊断 LOG（给 `hp-tuners-log-review` 判据）、不出命名（oem-strategy-library）。 |
-| `stage1-calibration-matrix` | 修改清单必须按**标定黄金顺序**排序（先空气/燃油后点火、先部分负荷后 WOT）；每项给数值锚点 + Balancing 取舍 + 第 5 节联动清单；功率上限以硬件瓶颈和 ±3% 空气误差为约束。 |
+| `stage1-calibration-matrix` | 修改清单必须按**标定黄金顺序**排序（先空气/燃油后点火、先部分负荷后 WOT）；每项给数值锚点 + Balancing 取舍 + 第 5 节联动清单；功率上限以硬件瓶颈和空气误差档位（<5% 可接受 / <3% 理想）为约束。 |
 | `hp-tuners-log-review` | 诊断顺序：先判空气模型（MAF pegging/duty 打满）→ 再判 Balancing（爆震 vs 扭矩干预）→ 再判保护策略距阈值多远。用"20-30° 怠速点火摆动=负荷/转速拾取问题"等判据。 |
 | `tcu-shift-calibration` | 任何动力侧扭矩提升都要回头核对 TCU 档位扭矩监控匹配（第 5 节第 2 条）。TCU 方法论(换挡点/TCC/油压/档位限扭/扭矩握手五大系统)执行层;bin 里定位换挡点表用其 `tcu-shift-calibration/scripts/tcu_map_locate.py`(递增车速曲线+档位堆叠+升降档回差)。 |
 | `tcu-platform-library` | TCU **平台参考层**(类比 oem-strategy-library 之于扭矩):先按**变速箱类型**(液力AT/湿式DCT/干式DCT/CVT/AMT)与具体平台(ZF 8HP/6HP、Aisin、GM 6L-10L、DSG DQ/DL、奔驰 7G/9G、Jatco CVT)定控制架构/自适应机制/访问·checksum 现实/顿挫根因,再回 `tcu-shift-calibration` 调五大系统。**类型不同控制机构完全不同**(同"顿挫"根因不同);改硬件/油压后必清自适应(同 `closed-loop-control`§5 自适应清值纪律);子型号细节标 ✅/🔷/❓ 不当事实;字节交 bin 引擎(经 `multi-vendor-ecu-engine` 核定)、checksum 交 `checksum-crc-engine`。 |

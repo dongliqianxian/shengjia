@@ -108,7 +108,7 @@ You must supply correct A2L scaling. Sources, in order of trust:
   before flashing (hand off `checksum-crc-engine`). Never call it flash-ready.
 - Keep the ORI untouched as recovery baseline; write to a new suffixed file.
 - A torque/limiter bump may need TCU torque-monitor sync (`tcu-shift-calibration`, doctrine §5 联动风险清单).
-- Verify air-mass model within ±3% after load/torque changes (`air-fuel-model-builder`).
+- Verify air-mass model meets the Banish tier (<5% acceptable, <3% ideal) after load/torque changes (`air-fuel-model-builder`).
 - Clear adaptive/knock learning after flashing.
 
 ## Running the tests

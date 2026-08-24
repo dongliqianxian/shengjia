@@ -145,7 +145,7 @@ Never trust an address/encoding you haven't confirmed. Procedure:
 - Keep the original (ORI) untouched as the recovery baseline; write to a new suffixed file.
 - TCU torque-monitor limits are a separate file — a torque bump here may need TCU sync.
 - Clear knock learning (KAM) after flashing so old adaptation doesn't mask the new calibration.
-- Verify air-mass modeling error within ±3% (Banish) after any load/torque change.
+- Verify air-mass modeling error against the Banish tiers (<5% acceptable / <3% ideal / <1% OEM) after any load/torque change; state which tier you hit.
 
 ## Running the tests
 ```bash

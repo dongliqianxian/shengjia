@@ -117,6 +117,48 @@ Both support `python <script> --selftest` outside Ghidra (tests the pure normali
 Existing community scripts (e.g. Med9 Ghidra scripts for MED9.1) automate map marking for
 specific platforms — see `ghidra-ida-setup` for resources.
 
+## ReVa (Ghidra MCP) — 什么时候能用，什么时候必须回反汇编清单
+
+`cyberkaida/reverse-engineering-assistant` 是 Ghidra 扩展，把 xref / 常量搜索 / 内存读取等
+暴露给 Claude Code 直接调用，补上确认链里「ghidra 坐实」这一环。**硬要求 Ghidra ≥ 12.0。**
+
+```
+盲扫候选  →  解码自检  →  【ghidra xref 坐实】  →  功能判定  →  scaling
+                              ← ReVa 补这里
+```
+
+### 能用 ReVa 回答的问题
+
+| 问题 | Tool Provider | 作用 |
+|---|---|---|
+| 谁读了这个地址？ | `CrossReferences` | **把候选从证据 B 级升到 A 级的那一步** |
+| 这个刻度常量在哪？ | `ConstantSearch` | 找 `/0x400`、`<<3` 类**固件自身算术证据**（§13.1 两条证据之一） |
+| 这几个字节到底是什么？ | `Memory` | 读原始字节，**绕过反编译器的字面量池丢失** |
+| 这张表的值流向哪？ | `DataFlow` | 追下游 |
+| ORI vs MOD 差异 | `Diff` | 配合 `reference-tune-porting` |
+
+### 必须回到反汇编清单 / 原始字节的问题
+
+> **`Decompiler` 类工具不得用来回答刻度、常量、指令流问题**（见上文硬约束节）。
+> 反编译器**按设计**丢弃字面量池 —— 用它找刻度 = 拿一个已经把答案丢掉的视图去找答案。
+> ReVa 让调用反编译器变得很容易，**这恰恰放大了这个陷阱**：结果来得快，看起来也很确定。
+
+**判据**：问题里出现「多少」「什么值」「哪个常量」「LSB」「scaling」→ 走 `ConstantSearch` / `Memory`，
+不看 `Decompiler` 输出。问题里出现「什么逻辑」「哪个分支」「谁调用谁」→ `Decompiler` 可用。
+
+### 使用纪律
+
+1. **写类工具先全关**（`Comment` / `Bookmark` / `DataType` / `Structure` / `Script` /
+   `ImportExport`、以及 `Symbol` 的重命名）。分析阶段不需要写回 Ghidra 数据库，
+   写回会让「工具改过的」和「原始事实」混在一起。
+2. **preflight 仍然要做** —— ReVa 读的是 Ghidra 数据库，如果数据区没先标成 data，
+   它读到的 xref 里就混着**自制假 xref**（见上文 77 个假引用者的实证）。**ReVa 不会替你做这一步。**
+3. **ReVa 的输出仍然是证据，不是结论** —— xref 命中把候选升到 A 级，
+   但功能判定仍交 `ecu-map-analysis`，刻度仍需 §13.1 的两条独立证据。
+
+> 装配与白名单细节见项目里的 `REVA-SETUP.md`。**未安装时本节不影响其它流程** ——
+> 手动在 Ghidra GUI 里做同样的查询，纪律完全一样。
+
 ## Output discipline
 - Report the **address + how you confirmed it** (xref path, axis monotonicity, decoded band), not
   just an address. An unconfirmed address is a guess.

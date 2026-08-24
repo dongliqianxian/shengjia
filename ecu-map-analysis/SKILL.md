@@ -54,7 +54,7 @@ Map it onto the 13-step golden order (doctrine §2 黄金顺序) and apply the s
 State **what model this table rests on and whether that model is trustworthy**:
 - An output/limiter table is only as good as the air model feeding its load axis. If MAF/MAP is
   pegging or injector duty is maxed, editing the output table is polishing a broken foundation.
-- For any load/torque/fuel map, ask: is air-mass modeling within ±3% (Banish)? If not, route the
+- For any load/torque/fuel map, ask: does air-mass modeling meet the Banish tier (<5% acceptable / <3% ideal)? If not, route the
   user to `air-fuel-model-builder` **first**.
 
 ### 6. Verdict (the output)

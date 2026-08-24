@@ -8,7 +8,7 @@ description: >-
 
 The doctrine says it plainly: **空气流量建模是第一优先级，凌驾一切** (first-principle #3). Almost
 every fuel and spark number is computed on top of the air model. This skill builds that model,
-corrects it against real data, and validates it to the **±3% Banish standard** *before* anyone
+corrects it against real data, and validates it against the **Banish tiers (<5% acceptable / <3% ideal / <1% OEM)** *before* anyone
 touches a torque, boost, or spark output table.
 
 Always run under `ecu-calibration-doctrine`. This is its executor for golden-order steps:
@@ -16,7 +16,7 @@ Always run under `ecu-calibration-doctrine`. This is its executor for golden-ord
 
 ## The chain (never skip a link — doctrine air-fuel chain A)
 ```
-sensor transfer correct?  ->  air model accurate (±3%)?  ->  injector model accurate?  ->  THEN λ target
+sensor transfer correct?  ->  air model accurate (<5% ok / <3% ideal)?  ->  injector model accurate?  ->  THEN λ target
    (MAF curve /                 (VE or MAF g/s)              (flow + deadtime +
     MAP+IAT)                                                  voltage comp)
 ```
@@ -132,7 +132,7 @@ ve_new = ve_correction(ve_old=0.92, lambda_meas=0.88, lambda_target=0.85)
 - Output the VE/MAF model with the doctrine HTML color-block grid; flag cells where the model is
   unvalidated (gray) vs confirmed (green).
 - End with the doctrine §5 联动风险清单 items relevant to air/fuel: VE→λ drift, MAF/MAP量程是否被超(pegging),
-  injector duty 是否打满, ±3% air-modeling error, checksum gate.
+  injector duty 是否打满, air-modeling error 达到哪一档(<5%/<3%/<1%), checksum gate.
 - This skill produces a trustworthy *model*; it does not write Stage power numbers (that's
   `stage1-calibration-matrix`) and does not do byte I/O (that's the bin engines).
 - If sensor data / wideband / trims are missing, say what's needed — never fabricate a VE table.
