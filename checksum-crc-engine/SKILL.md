@@ -83,6 +83,52 @@ and the correct repair path, each entry marked ✅实战确认 / 🔧工具路�
 entries as direction only — verify per the workflow below before relying on them. Every time a
 platform is confirmed in practice, append it there with full `ChecksumBlock(...)` parameters.
 
+## 逐镜像检测,不按控制器名查固定表(doctrine §13 逆向纪律,实证)
+
+以下全部来自两个真实实现,**不是推测**。
+
+### 1. 校验区范围必须**逐镜像**检测
+
+> **实证(5eat)**:同一个 TCU 家族里两种约定并存 —— `0x60000` 固定长度
+> (含 512KB 镜像只用 384KB、尾部留空的情况)与"整个文件"。
+> 原文:**"假定任何一种都会在一半的家族上产生一个自信的错误答案。"**
+
+**做法**:候选范围**全算一遍**,**哪个能复现 ROM 里已经存着的值,哪个就是这个镜像的约定**。
+按控制器名去查一张固定表 = 在一半的样本上自信地答错。
+
+### 2. 可能存在**第二个独立**校验和(balance 类)
+
+同一家族每个镜像还带一个 `0x008020` 的 "balance",且**分 16 位与 32 位两种变体**:
+
+| 变体 | 判据 | balance 位置 |
+|---|---|---|
+| **32 位** | 全和须等于 `0x5AA5A55A` | `0x008020` 整个 32 位字 |
+| **16 位** | 只检低半,对 `0x5AA5` | `0x008022` 半字,`0x008020` 保持零 |
+
+> **16 位那种最容易漏** —— 漏了就是 11 个 ROM 里 8 个改完过不了自检。
+> 判别是**结构性**的(16 位镜像在 `0x008020` 半字处是零),改完仍然成立。
+
+**修正顺序(一遍收敛)**:balance 在附加校验和覆盖的区域内,而附加校验和的槽位在 balance 区域外
+→ **先修内层 balance,后修外层附加校验和**。反过来会互相推翻。
+
+### 3. Bosch MED17 / EDC17 块发现锚点
+
+> **实证(medc17-checksum-tool)**:每个块的第一个 32 字节校验结构固定在 `block_start + 0x34`,
+> 其中 `+0x0C` 是种子 `0xFADECAFE`,`+0x10` 是期望值 `0xCAFEAFFE`。
+
+**1/2⁶⁴ 的锚点 —— 直接搜这对魔数定位所有块,不要猜。**
+
+- **块类型字节在 `block_start + 15`**:`0x80` = 应用(缓存 flash 视图);`0xA0` = 数据/标定(非缓存)
+- **TriCore 地址别名**:同一物理 flash 映射成缓存 `0x8xxxxxxx` 与非缓存 `0xAxxxxxxx` 两个视图。
+  **转文件偏移前必须剥掉段 nibble,否则 `0xA0` 块会偏出 `0x20000000`。**
+- **未编程分区**把校验/调整字段留成重复填充字节(`0xFF`,某些 Bosch 镜像是 `0xAF`)
+  → 没有真东西要保护,**修正必须跳过**
+- CRC32 可用 GF(2) 矩阵代数瞬时求解:往一个擦除态 dword(`0xFF`/`0x00`/Bosch pad `0xC3`)写补偿值
+- **多变体 ECU**:有多个标定变体的 ECU 维护每变体参数地址表,
+  监控校验和是对**当前激活变体**算的 —— **只修第一个,其余全错**
+
+> *依据 `ecu-calibration-doctrine/references/re-discipline.md` 第七节「校验和」7.1/7.2/7.3；实证来源 TomFLV/5eat 与 ConnorHowell/medc17-checksum-tool。*
+
 ## Procedure for an unknown checksum (the honest workflow)
 1. If you have **ORI + a tool-fixed MOD**, diff them: the bytes that changed *besides your edits* are
    the checksum location(s). Read width/endianness from that.

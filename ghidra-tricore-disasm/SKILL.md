@@ -48,6 +48,39 @@ So to find a map you find its **interpolation/lookup call**, and to understand a
 > calibration targets until `mov 0xE010,tp` was found — after which one target showed 11 read sites.
 > The full locate-and-prove workflow is `physical-constant-locator`.
 
+## Hard constraint: decompiler output cannot answer constant/scaling questions
+
+**反编译 ≠ 反汇编。** 这不是偏好问题,是工具的设计行为(doctrine §13.2 逆向纪律):
+
+- 反编译器**按设计丢弃字面量池**(literal pool) —— 刻度常量就住在那里
+- **未被引用的常量拿不到符号**
+- **PC 相对加载会被渲染成裸符号名**,真实数值不出现在输出里
+
+> **规则**:回答「这个刻度/LSB 是多少」「这个钳制常量是多少」时,
+> **必须走反汇编清单或原始字节**(`ConstantSearch` / `Memory` 类工具),
+> **不得**引用反编译产物。用反编译回答刻度问题 = 拿一个按设计丢掉了答案的视图去找答案。
+
+刻度结论还要满足 doctrine §13.1:**两条独立证据,至少一条来自固件自身算术**
+(`/0x400`、`<<3`、共享钳制常量),只有一条就标 `(est.)` 并写进产出文件本身。
+
+## Preflight: mark data regions BEFORE analysis (防自制假 xref)
+
+把表当代码反汇编会**制造出看起来很真的交叉引用**。
+
+> **实证(5eat)**:一次忽略这点的扫描产生了 **77 个**指向换挡表数组的"引用者",
+> 每一个都是扫描在读**它自己错误解码出来的指针**。
+
+**前置步骤(每个镜像做一次,在跑任何 xref 分析之前)**:
+
+1. 从 `blind-map-finder` 取数据区范围表(它的候选分层步骤会导出)
+2. 在 Ghidra 里把这些范围标为 data(`Data > Settings`,或脚本批量 `createData`)
+3. **再**开始反汇编与 xref 追踪
+
+跳过这一步,盲扫与反汇编这两条腿就不再独立 —— 它们会互相污染,
+而污染的结果**看起来是强证据**(两条腿都指向同一个地址,其实是同一个错误的回声)。
+
+> *依据 `ecu-calibration-doctrine/references/re-discipline.md` 第三节「反汇编 vs 反编译」3.1/3.2；实证来源 TomFLV/5eat-tcu-reverse-engineering。*
+
 ## Reading protection / limiter logic
 The pattern for a limiter is always: **read signal → compare to (calibratable) threshold → clamp /
 set flag / cut**. To find and understand one:

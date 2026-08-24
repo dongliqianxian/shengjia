@@ -66,6 +66,33 @@ Produce, with **zero vague language** (doctrine §7 输出纪律):
   knock learning, EGT/CAT, VE/lambda drift, driver-demand, checksum).
 - **Risk boundary**: where it gets dangerous and the leading indicator to watch in a LOG.
 
+## When the call graph is too dense: experiment instead of tracing (doctrine §13.4)
+
+调用图密到无法区分时("三个函数各发布 48 个命名值,什么都连到什么"),**别再追链路**。
+
+### 扰动法(perturbation) —— 该是第一个方法,不是最后一个
+
+```
+改 ROM 里的这张表  →  跑同一段工况  →  diff 整个 RAM / log
+                                        动了什么,它就影响什么
+```
+
+> 原作者评价:**"这本该是第一个方法。"** 同样思路在 CAN 信号映射上找到了真信号,
+> 而"扫描输入"的方法产生了 **1118 个假阳性**。
+
+**限制(必须写进结论)**:驾驶工况没触及的表不会动 —— 那是**「本次工况无影响」,不是「无意义」**。
+所以要跑多组工况:**怠速 / 巡航 / 加速 / 强制降档 / 油温高**。
+
+### 零基线陷阱(造成过几次错误结论)
+
+> RAM 清零时每个比较都走默认分支,所以一个函数可能对任何**单个**输入看起来都无反应,
+> 却对一个**合理的状态组合**响应良好。**一次探一个变量是错误的实验。**
+
+**正确顺序**:先 **全零 vs 全高**两个极端 → 确认函数是否真的输入无关 →
+动了再**逐个二分**找出承载效应的那个变量。
+
+> *依据 `ecu-calibration-doctrine/references/re-discipline.md` 第四节「功能判定的实验方法」4.1/4.2；实证来源 TomFLV/5eat 与 CSS-Electronics/can-bus-reverse-engineering-skills。*
+
 ## Output format
 - Lead with the role classification — it frames everything.
 - Use the doctrine HTML color-block grid for the map (绿=推荐改 / 黄=谨慎 / 红=禁激进 / 灰=不建议),
