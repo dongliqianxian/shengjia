@@ -145,6 +145,7 @@ python scripts/rom_similarity.py index --lib DIR --ext bin,ori,mod,rom --max-mb 
 # 查询
 python scripts/rom_similarity.py query --bin UNKNOWN.bin --top 20
 python scripts/rom_similarity.py query --bin UNKNOWN.bin --verify 5    # 粗筛 + 精确确认
+python scripts/rom_similarity.py query --bin UNKNOWN.bin --min-uniq 0.30  # 滤掉近乎空白的文件
 
 # 两个文件直接精确比对(不需要索引)
 python scripts/rom_similarity.py verify --a A.bin --b B.bin
@@ -176,6 +177,14 @@ python scripts/rom_similarity.py --selftest   # 19 项自测
     相邻两版仅 0.849% 字节相同(随机基线 0.391%)。**零候选不等于库里没有同源文件。**
   - **`.ols` 工程内部是压缩的**,必须先用 `winols-ols-parser` 抽出内部 ROM 再索引。
     默认后缀表因此**不含** `.ols`/`.kp`。
+- **近乎空白的文件会互相高分,已标出。** 实测库里有 4.6KB 的 EEPROM dump,熵 0.72、
+  唯一 shingle 占比仅 **11%**(正常 ECU bin > 90%)。这类文件彼此天然 1.000 分,
+  但对「找定义捐赠者」毫无价值。查询输出会把唯一率 < 30% 的候选标为 **低信息量**,
+  加 `--min-uniq 0.30` 可直接滤掉。
+- **第二阶段对不齐时不给百分比。** 若两文件找不到任何 256B 以上的完全相同片段,
+  输出「无法对齐」而**不报相同率** —— 硬按 0 偏移算出的数字看着像测量结果,实际无意义。
+  实测触发场景:24KB 标定块 vs 256KB 整片 ROM(不同软件版本),含入度 0.988 却无法对齐,
+  0 偏移硬算得 23.82%,那个数字没有任何含义。
 - **本技能不判功能、不给地址、不猜 scaling、不改字节。** 它只回答「像不像」。
 - **加密 / 打包 / 不同压缩率的同源文件测不出相似**,这是字节级方法的固有边界,不是 bug。
 - **分数区间是经验带**,首次使用应在自己的库上用已知同源文件校准。

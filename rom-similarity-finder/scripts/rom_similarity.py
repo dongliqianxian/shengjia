@@ -91,6 +91,10 @@ MASK64 = (1 << 64) - 1
 MAXU = np.uint64(MASK64)
 BASE = 0x100000001B3        # FNV-1a prime,奇数 -> mod 2^64 可逆
 MIN_FILE = 4096             # 小于这个不索引(不够开窗)
+LOW_INFO_UNIQ = 0.30        # 唯一 shingle 占比低于此值 = 内容几乎全是重复/空白。
+                            # 实测: 近乎空白的 EEPROM dump 只有 0.11(4616 B/501 distinct,
+                            # 熵 0.72),正常 ECU bin > 0.9。这类文件彼此天然 1.000 分,
+                            # 但对"找定义捐赠者"毫无价值,必须在输出里区分开。
 DEFAULT_EXT = "bin,ori,mod,rom,ecu,ori1,mod1"
 DEFAULT_DB = os.path.join(os.path.expanduser("~"), ".claude", "rom_index.sqlite")
 
@@ -206,21 +210,37 @@ def compare(fa, na, fb, nb):
 
 
 # ---------------------------------------------------------------- 第二阶段:精确确认
-def _anchor(buf, size=4096):
-    """从 buf 里挑一段【字节多样性高】的锚点,避开 0xFF/0x00 填充区。"""
+def _anchors(buf, size=4096, want=16):
+    """
+    从 buf 里挑【多个】高字节多样性的候选锚点,散布在全文件。-> [(offset, bytes), ...]
+
+    为什么要多个: 只挑一个的话,一旦那段恰好落在两文件【不共享】的区域,对齐就失败,
+    哪怕别处有大片相同内容。散布取点大幅提高命中率(自测: 两文件仅共享 512B 时,
+    单锚点必然失败,多锚点能对上)。同时跳过填充区 —— 全 0xFF/0x00 的段在任何文件里
+    都能"匹配",会给出假对齐。
+    """
     n = len(buf)
     if n <= size:
-        return 0, buf
-    best, best_at = -1, 0
-    step = max(1, (n - size) // 64)
+        return [(0, bytes(buf))]
+    cands = []
+    step = max(1, (n - size) // 32)
     for off in range(0, n - size + 1, step):
         seg = buf[off:off + size]
         div = len(set(seg[::16]))                        # 抽样估多样性,够用且快
-        if div > best:
-            best, best_at = div, off
-        if div >= 200:
+        if div >= 8:                                     # 太单调的段(填充)直接弃用
+            cands.append((div, off))
+    if not cands:
+        return [(0, bytes(buf[:size]))]
+    cands.sort(reverse=True)                             # 多样性高的优先
+    picked, seen = [], set()
+    for _div, off in cands:
+        if any(abs(off - o) < size for o in seen):       # 位置去重,别都挤在一处
+            continue
+        seen.add(off)
+        picked.append((off, bytes(buf[off:off + size])))
+        if len(picked) >= want:
             break
-    return best_at, buf[best_at:best_at + size]
+    return picked
 
 
 def verify_pair(a, b, max_probe=64):
@@ -232,16 +252,39 @@ def verify_pair(a, b, max_probe=64):
         r = verify_pair(b, a, max_probe)
         r["swapped"] = True
         return r
-    at, anc = _anchor(a)
     best = dict(offset=None, overlap=0, equal=0, ratio=0.0,
-                aligned=False, swapped=False)
-    start, probes = 0, 0
+                aligned=False, swapped=False, anchor=0)
+    # 多尺度锚点: 4KB 锚点要求两文件有一段【完全相同】的 4KB。跨软件版本时常常没有,
+    # 但仍可能共享较短的相同片段。逐级缩小,先大后小(大锚点误配概率低)。
+    for anc_size in (4096, 1024, 256):
+        if len(a) < anc_size:
+            continue
+        hit = False
+        for at, anc in _anchors(a, anc_size):
+            if _probe(a, b, at, anc, best, max_probe):
+                hit = True
+                break
+        if hit:
+            best["anchor"] = anc_size
+            break
+    if not best["aligned"]:
+        # 三种尺寸都没找到相同片段 -> 无法确定对齐。
+        # **此时不给"相同率"** —— 按 0 偏移硬算出来的百分比看着像测量结果,实际无意义
+        # (实测: 24KB 标定块 vs 256KB 整片 ROM,含入度 0.988 但 0 偏移只有 23.82%)。
+        best.update(offset=None, overlap=0, equal=0, ratio=None)
+    return best
+
+
+def _probe(a, b, at, anc, best, max_probe):
+    """在 b 中搜锚点 anc,对每个命中位置算重叠区字节相同率,更新 best。-> 是否对上"""
+    start, probes, found = 0, 0, False
     while probes < max_probe:
         p = b.find(anc, start)
         if p < 0:
             break
         probes += 1
         start = p + 1
+        found = True
         delta = p - at                                   # b 中对应 a[0] 的位置
         lo = max(0, -delta)
         hi = min(len(a), len(b) - delta)
@@ -252,17 +295,9 @@ def verify_pair(a, b, max_probe=64):
         eq = int(np.count_nonzero(seg_a == seg_b))
         ov = hi - lo
         if eq > best["equal"]:
-            best = dict(offset=delta, overlap=ov, equal=eq,
-                        ratio=eq / ov if ov else 0.0, aligned=True, swapped=False)
-    if not best["aligned"]:                              # 锚点搜不到 -> 退化为零偏移比对
-        ov = min(len(a), len(b))
-        if ov:
-            sa = np.frombuffer(a[:ov], np.uint8)
-            sb = np.frombuffer(b[:ov], np.uint8)
-            eq = int(np.count_nonzero(sa == sb))
-            best = dict(offset=0, overlap=ov, equal=eq, ratio=eq / ov,
-                        aligned=False, swapped=False)
-    return best
+            best.update(offset=delta, overlap=ov, equal=eq,   # 原地更新,调用方可见
+                        ratio=eq / ov if ov else 0.0, aligned=True)
+    return found and best["aligned"]
 
 
 # ---------------------------------------------------------------- 索引库
@@ -425,10 +460,16 @@ def cmd_query(a):
         if os.path.abspath(path) == os.path.abspath(a.binpath):
             continue
         r = compare(fq, nq, fb, nd)
+        # 唯一 shingle 占比 = distinct / 理论 shingle 数。近乎空白的文件此值极低,
+        # 它们彼此天然高分却没有检索价值,必须在输出里标出来。
+        r["uniq"] = nd / max(1, size - w + 1)
         r.update(path=path, size=size)
         res.append(r)
     res.sort(key=lambda x: -x["score"])
-    res = [r for r in res if r["score"] >= a.min_score][:a.top]
+    res = [r for r in res if r["score"] >= a.min_score]
+    if getattr(a, "min_uniq", 0.0) > 0:
+        res = [r for r in res if r["uniq"] >= a.min_uniq]
+    res = res[:a.top]
 
     print("=" * 100)
     print("粗筛结果 —— 目标 %s (%d B, %d distinct shingles)"
@@ -442,10 +483,22 @@ def cmd_query(a):
     if not res:
         print("  无候选(score >= %.2f)。库里没有相似文件 -> 转 blind-map-finder 盲扫。" % a.min_score)
         con.close(); return 0
-    print("%-5s %8s %8s %10s  %s" % ("#", "Jaccard", "含入度", "大小", "文件"))
+    print("%-5s %8s %8s %10s %6s  %s" % ("#", "Jaccard", "含入度", "大小", "唯一率", "文件"))
+    lowinfo = 0
     for i, r in enumerate(res, 1):
-        print("%-5d %7.3f %8.3f %9dK  %s"
-              % (i, r["jaccard"], r["containment"], r["size"] // 1024, r["path"]))
+        tag = ""
+        if r["uniq"] < LOW_INFO_UNIQ:
+            tag = "  << 低信息量"
+            lowinfo += 1
+        print("%-5d %7.3f %8.3f %9dK %5.0f%%  %s%s"
+              % (i, r["jaccard"], r["containment"], r["size"] // 1024,
+                 100 * r["uniq"], r["path"], tag))
+    if lowinfo:
+        print()
+        print("  注: %d 个候选标为【低信息量】(唯一 shingle 占比 < %.0f%%) —— 内容几乎全是重复/空白。"
+              % (lowinfo, 100 * LOW_INFO_UNIQ))
+        print("      这类文件(多为近乎空白的 EEPROM dump)彼此天然高分,**不代表是有用的同源文件**。")
+        print("      要滤掉:加 --min-uniq %.2f" % LOW_INFO_UNIQ)
 
     if a.verify:
         print()
@@ -459,9 +512,13 @@ def cmd_query(a):
             except OSError as e:
                 print("%-3d 读失败: %s" % (i, e)); continue
             v = verify_pair(data, other)
-            tag = "对齐 offset=%+d" % v["offset"] if v["aligned"] else "未找到锚点(按 0 偏移)"
-            print("%-3d %6.2f%% 相同  重叠 %dK  %s"
-                  % (i, 100 * v["ratio"], v["overlap"] // 1024, tag))
+            if v["aligned"]:
+                print("%-3d %6.2f%% 相同  重叠 %dK  对齐 offset=%+d (锚点 %dB)"
+                      % (i, 100 * v["ratio"], v["overlap"] // 1024,
+                         v["offset"], v.get("anchor", 0)))
+            else:
+                print("%-3d   无法对齐 —— 两文件没有任何 256B 以上的完全相同片段。"
+                      "**不给相同率**(硬按 0 偏移算出的百分比无意义)" % i)
             print("      %s" % r["path"])
     con.close()
     return 0
@@ -475,8 +532,13 @@ def cmd_verify(a):
     v = verify_pair(A, B)
     print("A: %s (%d B)" % (a.a, len(A)))
     print("B: %s (%d B)" % (a.b, len(B)))
-    print("对齐: %s   offset=%s" % ("是" if v["aligned"] else "否(锚点未命中)", v["offset"]))
-    print("重叠: %d B    相同: %d B    比例: %.4f%%" % (v["overlap"], v["equal"], 100 * v["ratio"]))
+    if v["aligned"]:
+        print("对齐: 是   offset=%+d   (锚点 %d B)" % (v["offset"], v.get("anchor", 0)))
+        print("重叠: %d B    相同: %d B    比例: %.4f%%"
+              % (v["overlap"], v["equal"], 100 * v["ratio"]))
+    else:
+        print("对齐: 否 —— 两文件没有任何 256B 以上的完全相同片段。")
+        print("      **不输出相同率**: 未对齐时按 0 偏移硬算的百分比不是测量结果。")
     fa, na = fingerprint(A)
     fb, nb = fingerprint(B)
     c = compare(fa, na, fb, nb)
@@ -569,6 +631,23 @@ def selftest():
     chk(v2["aligned"] and v2["ratio"] > 0.999,
         "小块在大文件中定位: offset=%s ratio=%.4f" % (v2["offset"], v2["ratio"]))
 
+    # 对不齐时【必须】不给相同率 —— 硬按 0 偏移算出的百分比看着像测量结果,实际无意义。
+    # 实测触发场景: 24KB 标定块 vs 256KB 整片 ROM(不同软件版本),含入度 0.988 但无法对齐。
+    v3 = verify_pair(big, other)
+    chk((not v3["aligned"]) and v3["ratio"] is None,
+        "无关文件无法对齐 -> ratio=None(拒绝给误导性百分比),实得 %r" % (v3["ratio"],))
+
+    # 多尺度 + 多位置锚点。用【真实比例】: 两文件共享一大段(32KB),但共享区不在开头,
+    # 且两边前后各有不同内容 —— 这正是"同一标定块出现在不同大小 dump 里"的形态。
+    # 注: 只共享几百字节的极端情况不测 —— 那种文件粗筛分≈0,根本进不到第二阶段。
+    shared = bytes(rng.integers(0, 256, 32768, dtype=np.uint8))
+    p1 = bytes(rng.integers(0, 256, 9000, dtype=np.uint8)) + shared + bytes(rng.integers(0, 256, 4000, dtype=np.uint8))
+    p2 = bytes(rng.integers(0, 256, 40000, dtype=np.uint8)) + shared + bytes(rng.integers(0, 256, 30000, dtype=np.uint8))
+    v4 = verify_pair(p1, p2)
+    chk(v4["aligned"] and v4["offset"] == 40000 - 9000,
+        "多位置锚点: 共享 32KB 且不在开头时对上, offset=%s 锚点 %sB"
+        % (v4["offset"], v4.get("anchor")))
+
     # --- 9. 空桶处理 ---
     tiny = bytes(rng.integers(0, 256, 200, dtype=np.uint8))
     ft, nt = fingerprint(tiny)
@@ -635,6 +714,8 @@ def main():
     pq.add_argument("--top", type=int, default=20)
     pq.add_argument("--min-score", type=float, default=0.02)
     pq.add_argument("--verify", type=int, default=0, help="对前 N 名做精确字节比对")
+    pq.add_argument("--min-uniq", type=float, default=0.0,
+                    help="滤掉唯一 shingle 占比低于此值的候选(建议 0.30,滤掉近乎空白的 EEPROM)")
 
     pv = sub.add_parser("verify", help="两个文件精确字节比对")
     pv.add_argument("--a", required=True)
