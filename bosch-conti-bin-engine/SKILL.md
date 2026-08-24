@@ -12,7 +12,7 @@ offset, layout — and the engine decodes, edits regions, writes back, and diffs
 tested so you don't re-derive it per project.
 
 Run under `ecu-calibration-doctrine`. This is its executor for Bosch/Conti binary work
-(doctrine §6 "bin/二进制工作": OEM-file minimal-change diff thinking; checksum is the delivery gate).
+(doctrine §6 技能路由表 "bin/二进制工作": OEM-file minimal-change diff thinking; checksum is the delivery gate).
 
 ## The model: A2L linear scaling
 Unlike DENSO's fixed formulas, Bosch/Conti values come from the A2L/DAMOS as:
@@ -107,7 +107,7 @@ You must supply correct A2L scaling. Sources, in order of trust:
 - ⚠ Checksum NOT recalculated — multi-layer + possibly signed; use WinOLS plugin / tool auto-checksum
   before flashing (hand off `checksum-crc-engine`). Never call it flash-ready.
 - Keep the ORI untouched as recovery baseline; write to a new suffixed file.
-- A torque/limiter bump may need TCU torque-monitor sync (`tcu-shift-calibration`, doctrine §5).
+- A torque/limiter bump may need TCU torque-monitor sync (`tcu-shift-calibration`, doctrine §5 联动风险清单).
 - Verify air-mass model within ±3% after load/torque changes (`air-fuel-model-builder`).
 - Clear adaptive/knock learning after flashing.
 

@@ -17,7 +17,7 @@ description: >
 # Bosch MD1 平台（现代柴油共轨 / AURIX / RSA secure-boot）
 
 MD1 是 EDC17 的下一代柴油 ECU，AURIX 平台。**与 EDC17 最大的区别不在标定逻辑，而在"读得到、
-写得进、签得回"这三关**——尤其是密码学签名。柴油扭矩链见 `oem-strategy-library` §2.6，
+写得进、签得回"这三关**——尤其是密码学签名。柴油扭矩链见 `oem-strategy-library` §2.6 柴油共轨扭矩链，
 字节解码带宽见 `bosch_conti_platforms.md`，本技能不重复。
 
 ## 1. 子型号识别

@@ -166,7 +166,7 @@ description: >
 | `stage1-calibration-matrix` | 修改清单必须按**标定黄金顺序**排序（先空气/燃油后点火、先部分负荷后 WOT）；每项给数值锚点 + Balancing 取舍 + 第 5 节联动清单；功率上限以硬件瓶颈和 ±3% 空气误差为约束。 |
 | `hp-tuners-log-review` | 诊断顺序：先判空气模型（MAF pegging/duty 打满）→ 再判 Balancing（爆震 vs 扭矩干预）→ 再判保护策略距阈值多远。用"20-30° 怠速点火摆动=负荷/转速拾取问题"等判据。 |
 | `tcu-shift-calibration` | 任何动力侧扭矩提升都要回头核对 TCU 档位扭矩监控匹配（第 5 节第 2 条）。TCU 方法论(换挡点/TCC/油压/档位限扭/扭矩握手五大系统)执行层;bin 里定位换挡点表用其 `tcu-shift-calibration/scripts/tcu_map_locate.py`(递增车速曲线+档位堆叠+升降档回差)。 |
-| `tcu-platform-library` | TCU **平台参考层**(类比 oem-strategy-library 之于扭矩):先按**变速箱类型**(液力AT/湿式DCT/干式DCT/CVT/AMT)与具体平台(ZF 8HP/6HP、Aisin、GM 6L-10L、DSG DQ/DL、奔驰 7G/9G、Jatco CVT)定控制架构/自适应机制/访问·checksum 现实/顿挫根因,再回 `tcu-shift-calibration` 调五大系统。**类型不同控制机构完全不同**(同"顿挫"根因不同);改硬件/油压后必清自适应(同 `closed-loop-control`§5);子型号细节标 ✅/🔷/❓ 不当事实;字节交 bin 引擎(经 `multi-vendor-ecu-engine` 核定)、checksum 交 `checksum-crc-engine`。 |
+| `tcu-platform-library` | TCU **平台参考层**(类比 oem-strategy-library 之于扭矩):先按**变速箱类型**(液力AT/湿式DCT/干式DCT/CVT/AMT)与具体平台(ZF 8HP/6HP、Aisin、GM 6L-10L、DSG DQ/DL、奔驰 7G/9G、Jatco CVT)定控制架构/自适应机制/访问·checksum 现实/顿挫根因,再回 `tcu-shift-calibration` 调五大系统。**类型不同控制机构完全不同**(同"顿挫"根因不同);改硬件/油压后必清自适应(同 `closed-loop-control`§5 自适应清值纪律);子型号细节标 ✅/🔷/❓ 不当事实;字节交 bin 引擎(经 `multi-vendor-ecu-engine` 核定)、checksum 交 `checksum-crc-engine`。 |
 | `winols-scaling-converter` | 换算服务于"组件传递函数精确写入"（黄金顺序②）和 MAF Scaling 技术；缩放时记住"MAF/喷油器/排量同系数、不动死区电压补偿"。 |
 | `ecu-video-script-writer` | 口播文案不得为传播牺牲工程严谨；可简化术语但不得违背第一性原理（如不得宣称"加 boost=加缸压"）。 |
 | `denso-bin-engine` | DENSO 专有固定编码的字节读写/diff；checksum 不重算，交付前必须经 ECM Titanium / `checksum-crc-engine`。 |
@@ -184,7 +184,7 @@ description: >
 | `ecu-calib-finder` | 扫本地标定库找兼容 DAMOS/A2L/OLS/BIN/ORI/MOD，按协议/MCU/平台相似度排序判可刷；库扫描为辅助工具，文件内字符串区识别实为最终证据（文件名不是证据）；匹配结果交 `damos-a2l-parser`(A2L)/`winols-ols-parser`(OLS)或 bin 引擎做进一步解码。 |
 | `winols-noread-remover` | 只除明文页脚 NOREAD 水印（空闲填充区），嵌入活动数据/加密的一律拒改；去除后必须 WinOLS 重导入验证 + checksum 重算（黄金顺序⑬交付闸门同样适用）。 |
 | `dtc-locator` | 给故障码找地址，以**无 A2L 字节级**为主：P 码按 J2012 编码成 2 字节→双字节序搜→以命中点为中心的升序 run 判可信度（HIGH/MEDIUM/LOW）；只做诊断/定位，字段确切含义交 `damos-a2l-parser`(DFC 标签)或 `ghidra-tricore-disasm`。 |
-| `edc17-platform` | Bosch EDC17 柴油**平台层**（TriCore 小端）：子型号(C/CP/P)识别、内存/基址、读写访问(OBD/bench/BSL 与读保护)、checksum 多层 CRC(非 RSA,可重算但走 WinOLS 插件)、柴油标定入口。字节交 `bosch-conti-bin-engine`、扭矩链交 `oem-strategy-library`§2.6、单表交 `ecu-map-analysis`。 |
+| `edc17-platform` | Bosch EDC17 柴油**平台层**（TriCore 小端）：子型号(C/CP/P)识别、内存/基址、读写访问(OBD/bench/BSL 与读保护)、checksum 多层 CRC(非 RSA,可重算但走 WinOLS 插件)、柴油标定入口。字节交 `bosch-conti-bin-engine`、扭矩链交 `oem-strategy-library`§2.6 柴油共轨扭矩链、单表交 `ecu-map-analysis`。 |
 | `md1-platform` | Bosch MD1 柴油**平台层**（AURIX 小端）：与 EDC17 差异在**f32 数据 + RSA secure-boot**——cal CRC 可算但引导签名不可伪造，未经正确工具链签名的签名区改动会 brick，不得凭本地重算宣称可刷；读取常被锁是主门槛。（MG1=汽油,不在此。） |
 | `dcm-platform` | Delphi/PHINIA DCM 柴油**平台层**：谱系(3.7/6.2/6.2AP/7.1AP)、字节序经 `multi-vendor-ecu-engine` 核定(TriCore→小端)、Delphi 命名≠Bosch DAMOS。**7.1AP 资料稀疏,强制置信度分级(✅可判/🔷推断须核对/❓未知),禁止把推断当事实**。 |
 | `idle-speed-calibration` | 定位怠速目标（**随水温递减的曲线**,有结构信号较可靠）并给修改边界；用共享引擎 `value_locate.py --preset idle_rpm --curve`；须确认 X 轴是水温、别与断油转速/换挡转速混淆；降怠速留足点火 trim + 进气余量,核对挂挡/空调/电负载偏移与柴油/涡轮怠速油压。字节交 bin 引擎、拆解交 `ecu-map-analysis`。 |
@@ -192,9 +192,9 @@ description: >
 | `parallel-map-finder` | **种子驱动**的平行地图批量查找(同一 bin 内找相似副本):给已知一张表,按 **near-identical(数值接近=复制/监控镜像,一起改)+ shape-variant(相关高=缩放/偏移的模式/档位副本)** 两线找齐,防"漏改一环"(尤其 Level-2 监控镜像不同步→limp)。`parallel-map-finder/scripts/parallel_map_scan.py`。与 `blind-map-finder`(无种子盲扫)、`damos-a2l-parser`(按命名)、`ecu-calib-finder`(跨文件)互补;**轴用 identical、有辨识度 2D 表才用 shape**(轴 shape 会过匹配);功能判定交 `ecu-map-analysis`、谁读它交 `ghidra-tricore-disasm`、同族纳入 `stage1-calibration-matrix`。 |
 | `powersports-ecu` | 动力运动域(摩托/ATV/船机/雪地车):不是徽标而是**控制域**——很多车**非扭矩结构(TPS 直控)**、空气模型多 **alpha-N(ITB)**、**按档位/按缸/副节气门(STV)**分表、专属刷写生态(Woolich/FTECU/TuneECU/Power Commander)。动手前先判"扭矩结构 vs TPS 直控"。字节序按核经 `multi-vendor-ecu-engine`(Keihin/Honda SH=大端);alpha-N 数学交 `air-fuel-model-builder`;按档位/按缸副本交 `parallel-map-finder`;O2 稀燃格交 `closed-loop-control`;赛道/越野照常。 |
 | `bin-to-a2l` | **自描述容器**平台（每张表自带行列数+轴）的编排链：探明标定容器 ABI → 穷举全表清单 → 物理闭环验证 → 产出分组 A2L。第①步探针判定"非自描述"→ **立即交回 `blind-map-finder`**，不硬撑。诚实边界：自描述平台上用 Ghidra/反汇编找 map **无效**，本技能不承诺代码级定位；**写出 A2L ≠ 知道每张表干嘛**，功能命名仍须人判断（交 `ecu-map-analysis`）；checksum 交 `checksum-crc-engine`。 |
-| `denso-rh850-map-inventory` | DENSO RH850 **代码侧**穷举全表清单（与 `blind-map-finder` 的形态盲扫互补）。xref 全落空时走**全局基址寄存器解锁**（`ghidra-ida-setup` §5）；按已知物理量定位并证实交 `physical-constant-locator`；功能判定交 `ecu-map-analysis`。 |
+| `denso-rh850-map-inventory` | DENSO RH850 **代码侧**穷举全表清单（与 `blind-map-finder` 的形态盲扫互补）。xref 全落空时走**全局基址寄存器解锁**（`ghidra-ida-setup` §5 全局基址寄存器）；按已知物理量定位并证实交 `physical-constant-locator`；功能判定交 `ecu-map-analysis`。 |
 | `physical-constant-locator` | 定位**已知名字的物理常数**（主减速比/轮胎半径/各档速比/排量/喷油器流量）并升级为**代码证实的事实**。关键区别：用**物理关系**而非单个数值定位，误报比裸标量搜索低一到两个数量级，并顺带解出该 bin 的定点标度。只知道一个值 → 用 `speed-limiter-removal/scripts/value_locate.py`。**"候选"未经代码证实前不得当事实**（doctrine 原则#7 事实与解释分离）。 |
-| `reference-tune-porting` | **输入里有一份别人已改好的 MOD 时的强制入口**（这是二值判据，见 `stage1-calibration-matrix` 前置分流）：整文件 diff 聚簇 → 归属到命名 MAP → 逐条 keep/fix/drop → 跨文件移植的逐表证明。**判定规则不归它**，归 doctrine + `stage1-calibration-matrix`；识别出"骗扭矩"默认 **drop**（`torque-model-builder` §6.5）；副本齐全性交 `parallel-map-finder`；checksum 交 `checksum-crc-engine`。 |
+| `reference-tune-porting` | **输入里有一份别人已改好的 MOD 时的强制入口**（这是二值判据，见 `stage1-calibration-matrix` 前置分流）：整文件 diff 聚簇 → 归属到命名 MAP → 逐条 keep/fix/drop → 跨文件移植的逐表证明。**判定规则不归它**，归 doctrine + `stage1-calibration-matrix`；识别出"骗扭矩"默认 **drop**（`torque-model-builder` §6.5 骗扭矩判据）；副本齐全性交 `parallel-map-finder`；checksum 交 `checksum-crc-engine`。 |
 | `winols-noread-stamper` | `winols-noread-remover` 的**反向**（写入侧水印）。判据复用 `winols-noread-remover/scripts/noread_hidden.py`；同样受交付闸门约束——改动后必须重导入验证 + checksum 归属明确（§6.5）。 |
 | bin/二进制工作 | 优先从 OEM 文件最小改动（黄金顺序③）；diff 思维；checksum 是交付前置闸门。 |
 
@@ -367,7 +367,7 @@ TCU 按 CAN 上收到的扭矩算夹紧力/油压。报低了 → 油压系统�
 ### 12.5 与 §5 联动风险清单的关系
 
 抬扭结论收尾时，§5 里的「TCU 扭矩监控」「Virtual/Inverse Torque 同步」两条**必查**；
-判「修正 vs 骗」的铁证见 `torque-model-builder` §6.5（合法的模型修正不需要动独立监控阈值）。
+判「修正 vs 骗」的铁证见 `torque-model-builder` §6.5 骗扭矩判据（合法的模型修正不需要动独立监控阈值）。
 
 ---
 

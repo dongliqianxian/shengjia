@@ -43,7 +43,7 @@ So to find a map you find its **interpolation/lookup call**, and to understand a
 > that the image reaches calibration through a **global base register** (`gp`/`tp`/`ep` on V850/RH850,
 > `a0`/`a1`/`a9` on TriCore, `GBR` on SH, `r2`/`r13` on PowerPC) loaded once during startup. Then the
 > instruction encodes only a **displacement**, so neither xref search nor an address-literal search can
-> ever hit. Recover the base from the reset path (`ghidra-ida-setup` §5), recompute
+> ever hit. Recover the base from the reset path (`ghidra-ida-setup` §5 全局基址寄存器), recompute
 > `absolute = base + disp`, and re-scan. Measured case: a DENSO V850 image gave `refs=0` on all five
 > calibration targets until `mov 0xE010,tp` was found — after which one target showed 11 read sites.
 > The full locate-and-prove workflow is `physical-constant-locator`.
@@ -60,7 +60,7 @@ set flag / cut**. To find and understand one:
    LOG symptom to expect (hand to `hp-tuners-log-review`).
 4. **Torque monitor / driver-demand** traps are the common Stage1 blocker: a modeled-vs-allowed
    torque comparison that faults if you raise torque without raising the monitor ceiling — and may
-   need TCU sync (`tcu-shift-calibration`, doctrine §5).
+   need TCU sync (`tcu-shift-calibration`, doctrine §5 联动风险清单).
 
 > Do not patch code to defeat a safety/monitor unless the user has a legitimate, authorized bench/
 > motorsport reason and understands the risk. Prefer recalibrating the threshold tables over NOP-ing

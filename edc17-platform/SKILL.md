@@ -16,7 +16,7 @@ description: >
 # Bosch EDC17 平台（柴油共轨 / Infineon TriCore）
 
 EDC17 是最主流的乘用/轻商柴油 ECU，2006 年起大规模装车。本技能只讲**这个平台专属**的东西；
-柴油扭矩链见 `oem-strategy-library` §2.6，字节解码带宽见
+柴油扭矩链见 `oem-strategy-library` §2.6 柴油共轨扭矩链，字节解码带宽见
 `bosch-conti-bin-engine/references/bosch_conti_platforms.md`，本技能不重复。
 
 ## 1. 子型号识别（先定到具体变体）

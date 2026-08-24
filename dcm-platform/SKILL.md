@@ -10,7 +10,7 @@ description: >
   重要：DCM7.1AP 公开资料稀疏，本技能对其具体参数按谱系【合理推断 + 明确标注置信度】，
   必须以用户实际文件/工具核对，不得当成已证实事实照搬。
   它不做字节读写（bosch-conti-bin-engine，经 multi-vendor 核定字节序后）、不做单表拆解
-  （ecu-map-analysis）、不重算 checksum（checksum-crc-engine）、不出扭矩架构（oem-strategy-library §2.6）。
+  （ecu-map-analysis）、不重算 checksum（checksum-crc-engine）、不出扭矩架构（oem-strategy-library §2.6 柴油共轨扭矩链）。
   运行于 ecu-calibration-doctrine 之下。
   边界：只做诊断/标定支持。
 ---
@@ -18,7 +18,7 @@ description: >
 # Delphi / PHINIA DCM 平台（柴油共轨）
 
 DCM 是 Delphi（现 PHINIA）的柴油共轨 ECU 家族，广见于**雷诺-日产（dCi）、现代/起亚、PSA、
-部分 GM/双龙/马恒达**柴油。柴油扭矩链见 `oem-strategy-library` §2.6（Delphi 侧扭矩表达更贴近
+部分 GM/双龙/马恒达**柴油。柴油扭矩链见 `oem-strategy-library` §2.6 柴油共轨扭矩链（Delphi 侧扭矩表达更贴近
 物理喷油量、限制器层级相对扁平）。本技能只讲平台专属识别/访问,不重复扭矩逻辑与字节带宽。
 
 ## 置信度纪律（本技能强制）
@@ -67,7 +67,7 @@ DCM（尤其新代 7.1AP）公开逆向资料远少于 Bosch。下表每项标�
 ## 4. Delphi 命名与标定入口
 
 - Delphi 命名惯例**与 Bosch DAMOS 不同**（非 KF/MLD 前缀体系）；跨平台功能对照见
-  `oem-strategy-library` §3。exact 标签/地址一律经 `damos-a2l-parser`（A2L）/`winols-ols-parser`（.ols）/
+  `oem-strategy-library` §3 跨平台 MAP 对照。exact 标签/地址一律经 `damos-a2l-parser`（A2L）/`winols-ols-parser`（.ols）/
   `ghidra-tricore-disasm`（无定义）提取，不得凭空写死 Delphi 标签。
 - 柴油 Stage 主战场同 §2.6：烟度限制→增压/VGT→IQ/扭矩限制→轨压→EGT/DPF 保护。
 - 分工：单表 `ecu-map-analysis`；整套 `stage1-calibration-matrix`；字节读写 `bosch-conti-bin-engine`

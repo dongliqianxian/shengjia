@@ -48,7 +48,7 @@ Typical Infineon TriCore layout (confirm per device datasheet):
 - **Program flash (PFLASH)** is mapped high, commonly around `0x8000_0000` (cached) / `0xA000_0000`
   (non-cached) on TC17xx, and `0x8000_0000`+ on AURIX. The bench dump's offset 0 = the flash base.
 - **Data flash (DFLASH)** — calibration/EEPROM area — is a separate region; non-volatile (a power
-  cycle does NOT clear learned values — doctrine §5 note on knock learning).
+  cycle does NOT clear learned values — doctrine §5 联动风险清单 note on knock learning).
 - **RAM** is mapped elsewhere (e.g. `0xD000_0000` scratch on TriCore). Globals the limiter logic
   reads usually live in RAM.
 

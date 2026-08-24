@@ -44,7 +44,7 @@ binaries use **`bosch-conti-bin-engine`** (+ `multi-vendor-ecu-engine` for the r
 This skill consumes engineering values; it does not derive them.
 
 ### 4. Place it in the golden order & sanity-check shape
-Map it onto the 13-step golden order (doctrine §2) and apply the shape self-checks (doctrine §3):
+Map it onto the 13-step golden order (doctrine §2 黄金顺序) and apply the shape self-checks (doctrine §3 数值锚点):
 - **Spark table = the inverse of the VE table, smooth, no cliffs.** A sharp step usually hides
   another problem (weak AE, mis-scaled sensor, axis error) — find the root cause before "smoothing".
 - Spark trends **down with load, up with RPM**. Fuel/lambda tables trend toward their WOT anchors.
@@ -58,11 +58,11 @@ State **what model this table rests on and whether that model is trustworthy**:
   user to `air-fuel-model-builder` **first**.
 
 ### 6. Verdict (the output)
-Produce, with **zero vague language** (doctrine §7):
+Produce, with **zero vague language** (doctrine §7 输出纪律):
 - **Role + one-line function**: "This is the WOT torque *limiter*, clamps modeled torque vs RPM."
 - **Safe edit**: direction, region (RPM×load), magnitude (% or absolute), and *why that magnitude*.
 - **ECU response**: what the PCM does with the new values.
-- **Interactions**: the relevant items from the doctrine §5 linkage checklist (TCU torque monitor,
+- **Interactions**: the relevant items from the doctrine §5 联动风险清单 linkage checklist (TCU torque monitor,
   knock learning, EGT/CAT, VE/lambda drift, driver-demand, checksum).
 - **Risk boundary**: where it gets dangerous and the leading indicator to watch in a LOG.
 
@@ -70,7 +70,7 @@ Produce, with **zero vague language** (doctrine §7):
 - Lead with the role classification — it frames everything.
 - Use the doctrine HTML color-block grid for the map (绿=推荐改 / 黄=谨慎 / 红=禁激进 / 灰=不建议),
   axes in the same orientation/values as the user's screenshot.
-- End with only the doctrine §5 linkage items **relevant to this one map** (don't dump the whole list).
+- End with only the doctrine §5 联动风险清单 linkage items **relevant to this one map** (don't dump the whole list).
 
 ## Hard boundaries
 - One map at a time. If the user wants the whole car, hand off to `stage1-calibration-matrix`.

@@ -61,7 +61,7 @@ body/engine). TriCore/ST10, LE. Torque/TCU work → coordinate with `tcu-shift-c
 ### TRW (now ZF)  → `bosch-conti-bin-engine`, engine + safety
 - **TRW EMS** diesel/gasoline (PSA, SsangYong, Great Wall, JLR): TriCore → **little**.
 - Also airbag/ABS/EPS modules (not power tuning). Engine torque bump → check TCU/safety torque
-  monitor (doctrine §5).
+  monitor (doctrine §5 联动风险清单).
 
 ### Mitsubishi Electric  → endianness depends on core
 - Older Mitsubishi/Evo & some Nissan/Mazda/Volvo: **Renesas SH → BIG** (decode big-endian!).

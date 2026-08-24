@@ -136,7 +136,7 @@ tcu-platform-library
 ├── 字节读写(核定字节序后) → multi-vendor-ecu-engine + bosch-conti-bin-engine
 ├── 写后 checksum → checksum-crc-engine
 ├── ECU 侧扭矩链/扭矩信号 → oem-strategy-library
-├── 自适应清值纪律同源 → closed-loop-control §5
+├── 自适应清值纪律同源 → closed-loop-control §5 自适应清值纪律
 └── 所有结论经过 ecu-calibration-doctrine
 ```
 

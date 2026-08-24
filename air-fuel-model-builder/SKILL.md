@@ -22,7 +22,7 @@ sensor transfer correct?  ->  air model accurate (±3%)?  ->  injector model acc
 ```
 Any broken link makes every downstream edit rest on a lie. Diagnose left-to-right.
 
-## 0. 建模前先固定测量环境（doctrine §10 — 跳过这步等于打移动靶）
+## 0. 建模前先固定测量环境（doctrine §10 建模前提 — 跳过这步等于打移动靶）
 
 改任何 VE/MAF 数字**之前**，先把环境钉死，否则你测到的误差不是空气模型的误差：
 
@@ -34,7 +34,7 @@ Any broken link makes every downstream edit rest on a lie. Diagnose left-to-righ
 5. **粗调 → 精修** — 建模期用「电锯」不是「砂纸」：整体偏 10% 就整条加 10%，看趋势外推。
    **到了精修阶段还要大改 = 前面错了或车有硬件问题**（doctrine 原则#10），回头查，别在修正层打补丁。
 6. **负荷压在 ≤60%** — 过浓久了洗缸伤活塞环，过稀抬排温伤气门/歧管/催化器。
-7. **无台架 → 只能缩放不能重塑形状**（doctrine §9）：路试稳态点抽样 + 趋势外推，
+7. **无台架 → 只能缩放不能重塑形状**（doctrine §9 无台架降级）：路试稳态点抽样 + 趋势外推，
    **必须标注哪些 cell 是实测、哪些是外推**。
 
 > **VE 轴断点规划**（常被忽略）：分辨率要花在**效率变化最快的地方**（刚离开怠速那一段），
@@ -90,7 +90,7 @@ Iterate until the model is right, then stop touching it:
 - **From wideband**: `VE_new = VE_old × (λ_measured / λ_target)` cell by cell (the engine helper does
   this). Converge, don't overshoot — change ≤ the measured error each pass.
 - **From fuel trims**: fold STFT+LTFT back into VE/MAF (`correction = (1 + (STFT+LTFT)/100)`), then
-  the trims should collapse toward **< 3%** (doctrine §5). Trims that stay large = the base model is
+  the trims should collapse toward **< 3%** (doctrine §5 联动风险清单). Trims that stay large = the base model is
   still wrong (or there's an unmetered leak / injector error) — do not just widen trim authority.
 - **Validate**: air-modeling error **< 5% acceptable, < 3% ideal, < 1% OEM**. State which you hit.
 
@@ -120,7 +120,7 @@ ve_new = ve_correction(ve_old=0.92, lambda_meas=0.88, lambda_target=0.85)
 ## Outputs & boundaries
 - Output the VE/MAF model with the doctrine HTML color-block grid; flag cells where the model is
   unvalidated (gray) vs confirmed (green).
-- End with the doctrine §5 items relevant to air/fuel: VE→λ drift, MAF/MAP量程是否被超(pegging),
+- End with the doctrine §5 联动风险清单 items relevant to air/fuel: VE→λ drift, MAF/MAP量程是否被超(pegging),
   injector duty 是否打满, ±3% air-modeling error, checksum gate.
 - This skill produces a trustworthy *model*; it does not write Stage power numbers (that's
   `stage1-calibration-matrix`) and does not do byte I/O (that's the bin engines).

@@ -136,7 +136,7 @@ python scripts/map_inventory.py <bin> --reader 0x06590C=A --reader 0x066B10=B \
 - **经全局基址寄存器 `gp`/`tp`/`ep` + 16 位位移访问的**——这类根本不构造地址，
   `MOV imm32` 扫描天生看不见。实测一台丰田 V850 的传动系标定全部走 `ld.h <disp>[tp]`，
   基址在复位路径里由 `mov 0xE010,tp` 装入一次。**这也是 Ghidra xref 会全部返回 0 的原因。**
-  解锁流程见 `ghidra-ida-setup` §5；按已知物理量定位并证实交 `physical-constant-locator`。
+  解锁流程见 `ghidra-ida-setup` §5 全局基址寄存器；按已知物理量定位并证实交 `physical-constant-locator`。
 
 本轮 12 个第三方定义的维度里，有 8 个在清单里零命中——**清单是「代码可达的表」，不是「文件里所有的表」**。
 补漏走 `blind-map-finder`，但把它的轴单调性判据从「严格递增」放宽到「**非递减**」
