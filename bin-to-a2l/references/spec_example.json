@@ -1,0 +1,723 @@
+{
+ "project": "ISUZU_RZ4E_MD1CS089",
+ "title": "ISUZU 1.9 RZ4E-TC / Bosch MD1CS089 / Infineon AURIX TC299TP",
+ "module": "MD1CS089",
+ "module_desc": "MD1CS089 calibration",
+ "header": "Calibration definition",
+ "version": "1.0",
+ "mod_common": "TriCore, little endian",
+ "root": "Calibration",
+ "root_desc": "MD1CS089",
+ "base": "0x80000000",
+ "groups": [
+  {
+   "name": "Torque",
+   "desc": "Torque structure",
+   "maps": [
+    {
+     "name": "DriverDemand_1",
+     "addr": "0x4d45a2",
+     "rows": 16,
+     "cols": 16,
+     "data": "NM",
+     "desc": "Driver demand torque 1",
+     "x": "RPM",
+     "y": "PEDAL"
+    },
+    {
+     "name": "DriverDemand_2",
+     "addr": "0x4d47e6",
+     "rows": 16,
+     "cols": 16,
+     "data": "NM",
+     "desc": "Driver demand torque 2",
+     "x": "RPM",
+     "y": "PEDAL"
+    },
+    {
+     "name": "DriverDemand_3",
+     "addr": "0x4d4a2a",
+     "rows": 16,
+     "cols": 16,
+     "data": "NM",
+     "desc": "Driver demand torque 3",
+     "x": "RPM",
+     "y": "PEDAL"
+    },
+    {
+     "name": "ForwardModel",
+     "addr": "0x4ea7a6",
+     "rows": 16,
+     "cols": 15,
+     "data": "NM",
+     "desc": "Torque from engine speed and injection quantity",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "CrankingTorque",
+     "addr": "0x4d1130",
+     "rows": 6,
+     "cols": 6,
+     "data": "NM",
+     "desc": "Torque during cranking",
+     "x": "RPM",
+     "y": "TEMP",
+     "y_signed": true
+    },
+    {
+     "name": "MaxTorqueCurve",
+     "addr": "0x53dfe6",
+     "rows": 18,
+     "cols": 1,
+     "data": "NM",
+     "desc": "Maximum torque limit curve",
+     "x": "RAW"
+    },
+    {
+     "name": "GlobalCeiling",
+     "addr": "0x53e028",
+     "rows": 1,
+     "cols": 1,
+     "data": "NM",
+     "desc": "Absolute torque ceiling"
+    }
+   ]
+  },
+  {
+   "name": "Injection",
+   "desc": "Injection quantity and duration",
+   "maps": [
+    {
+     "name": "QuantityCeiling",
+     "addr": "0x4a8cfc",
+     "rows": 25,
+     "cols": 13,
+     "data": "MG",
+     "desc": "Maximum injection quantity",
+     "x": "RPM",
+     "y": "IDX"
+    },
+    {
+     "name": "QuantityLimiter",
+     "addr": "0x4a9252",
+     "rows": 7,
+     "cols": 1,
+     "data": "MG",
+     "desc": "Injection quantity limiter",
+     "x": "IQ"
+    },
+    {
+     "name": "SmokeLambda",
+     "addr": "0x52bf54",
+     "rows": 25,
+     "cols": 25,
+     "data": "LAM",
+     "desc": "Smoke limitation, lower lambda value",
+     "x": "RAW",
+     "y": "RAW"
+    },
+    {
+     "name": "SmokeLambdaMirror",
+     "addr": "0x52c49e",
+     "rows": 25,
+     "cols": 25,
+     "data": "LAM",
+     "desc": "Smoke limitation, mirrored value",
+     "signed": true,
+     "x": "RAW",
+     "y": "RAW"
+    },
+    {
+     "name": "InverseModel_1",
+     "addr": "0x5959b6",
+     "rows": 19,
+     "cols": 18,
+     "data": "MG",
+     "desc": "Injection quantity from speed and torque 1",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "InverseModel_2",
+     "addr": "0x595644",
+     "rows": 18,
+     "cols": 20,
+     "data": "MG",
+     "desc": "Injection quantity from speed and torque 2",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "InverseModel_3",
+     "addr": "0x596afa",
+     "rows": 19,
+     "cols": 18,
+     "data": "MG",
+     "desc": "Injection quantity from speed and torque 3",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "InverseModel_4",
+     "addr": "0x59486c",
+     "rows": 18,
+     "cols": 16,
+     "data": "MG",
+     "desc": "Injection quantity from speed and torque 4",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "InverseModel_5",
+     "addr": "0x594be0",
+     "rows": 18,
+     "cols": 16,
+     "data": "MG",
+     "desc": "Injection quantity from speed and torque 5",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "InverseModel_6",
+     "addr": "0x596418",
+     "rows": 20,
+     "cols": 20,
+     "data": "MG",
+     "desc": "Injection quantity from speed and torque 6",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "InverseModel_7",
+     "addr": "0x598322",
+     "rows": 18,
+     "cols": 17,
+     "data": "MG",
+     "desc": "Injection quantity from speed and torque 7",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "BaseQuantity",
+     "addr": "0x515162",
+     "rows": 20,
+     "cols": 17,
+     "data": "MG",
+     "desc": "Injection base quantity",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "EnergizingTime",
+     "addr": "0x58792c",
+     "rows": 19,
+     "cols": 24,
+     "data": "US",
+     "desc": "Injector energizing time",
+     "x": "RPM",
+     "y": "RAW"
+    }
+   ]
+  },
+  {
+   "name": "RailPressure",
+   "desc": "Common rail pressure",
+   "maps": [
+    {
+     "name": "Setpoint_01",
+     "addr": "0x4887d4",
+     "rows": 20,
+     "cols": 18,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 01",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_02",
+     "addr": "0x488b4c",
+     "rows": 20,
+     "cols": 20,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 02",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_03",
+     "addr": "0x489230",
+     "rows": 20,
+     "cols": 18,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 03",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_04",
+     "addr": "0x4895a4",
+     "rows": 20,
+     "cols": 18,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 04",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_05",
+     "addr": "0x489910",
+     "rows": 16,
+     "cols": 18,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 05",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_06",
+     "addr": "0x489c84",
+     "rows": 16,
+     "cols": 18,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 06",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_07",
+     "addr": "0x489ffa",
+     "rows": 16,
+     "cols": 19,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 07",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_08",
+     "addr": "0x48a374",
+     "rows": 20,
+     "cols": 18,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 08",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_09",
+     "addr": "0x48a6ec",
+     "rows": 20,
+     "cols": 20,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 09",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_10",
+     "addr": "0x48add0",
+     "rows": 20,
+     "cols": 18,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 10",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_11",
+     "addr": "0x48b144",
+     "rows": 20,
+     "cols": 18,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 11",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_12",
+     "addr": "0x48b4b0",
+     "rows": 16,
+     "cols": 18,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 12",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_13",
+     "addr": "0x48b830",
+     "rows": 20,
+     "cols": 20,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 13",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_14",
+     "addr": "0x487120",
+     "rows": 16,
+     "cols": 16,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 14",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_15",
+     "addr": "0x4875a8",
+     "rows": 16,
+     "cols": 16,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 15",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Setpoint_16",
+     "addr": "0x487a30",
+     "rows": 16,
+     "cols": 16,
+     "data": "BAR",
+     "desc": "Rail pressure setpoint 16",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "LimitCurve",
+     "addr": "0x59c052",
+     "rows": 16,
+     "cols": 1,
+     "data": "BAR",
+     "desc": "Rail pressure limit curve",
+     "x": "RAW"
+    },
+    {
+     "name": "LimitMap",
+     "addr": "0x59c096",
+     "rows": 8,
+     "cols": 8,
+     "data": "BAR",
+     "desc": "Rail pressure limit map",
+     "x": "RAW",
+     "y": "RAW"
+    },
+    {
+     "name": "LimitValue_A",
+     "addr": "0x599d1a",
+     "rows": 1,
+     "cols": 1,
+     "data": "BAR",
+     "desc": "Rail pressure limit A"
+    },
+    {
+     "name": "LimitValue_B",
+     "addr": "0x59950e",
+     "rows": 1,
+     "cols": 1,
+     "data": "BAR",
+     "desc": "Rail pressure limit B"
+    },
+    {
+     "name": "LimitValue_C",
+     "addr": "0x599510",
+     "rows": 1,
+     "cols": 1,
+     "data": "BAR",
+     "desc": "Rail pressure limit C"
+    }
+   ]
+  },
+  {
+   "name": "Boost",
+   "desc": "Charge pressure",
+   "maps": [
+    {
+     "name": "Target_01",
+     "addr": "0x4bbfba",
+     "rows": 20,
+     "cols": 17,
+     "data": "HPA",
+     "desc": "Charge pressure target 01",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Target_02",
+     "addr": "0x4bc334",
+     "rows": 20,
+     "cols": 20,
+     "data": "HPA",
+     "desc": "Charge pressure target 02",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Target_03",
+     "addr": "0x4bc6a0",
+     "rows": 20,
+     "cols": 16,
+     "data": "HPA",
+     "desc": "Charge pressure target 03",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Target_04",
+     "addr": "0x4bca16",
+     "rows": 20,
+     "cols": 17,
+     "data": "HPA",
+     "desc": "Charge pressure target 04",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Target_05",
+     "addr": "0x4f7d9c",
+     "rows": 16,
+     "cols": 16,
+     "data": "HPA",
+     "desc": "Charge pressure target 05",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Target_06",
+     "addr": "0x4bcd80",
+     "rows": 16,
+     "cols": 16,
+     "data": "HPA",
+     "desc": "Charge pressure target 06",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Target_07",
+     "addr": "0x4bd0f4",
+     "rows": 16,
+     "cols": 16,
+     "data": "HPA",
+     "desc": "Charge pressure target 07",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Target_08",
+     "addr": "0x4bd468",
+     "rows": 16,
+     "cols": 16,
+     "data": "HPA",
+     "desc": "Charge pressure target 08",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Target_09",
+     "addr": "0x4bf792",
+     "rows": 16,
+     "cols": 15,
+     "data": "HPA",
+     "desc": "Charge pressure target 09",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Target_10",
+     "addr": "0x4bf9d6",
+     "rows": 16,
+     "cols": 15,
+     "data": "HPA",
+     "desc": "Charge pressure target 10",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Ceiling",
+     "addr": "0x4c326e",
+     "rows": 16,
+     "cols": 9,
+     "data": "HPA",
+     "desc": "Charge pressure ceiling",
+     "x": "RPM",
+     "y": "RAW"
+    }
+   ]
+  },
+  {
+   "name": "ExhaustTemperature",
+   "desc": "Exhaust gas temperature",
+   "maps": [
+    {
+     "name": "Model_1",
+     "addr": "0x47c07a",
+     "rows": 20,
+     "cols": 17,
+     "data": "DEGC",
+     "desc": "Exhaust temperature model 1",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Model_2",
+     "addr": "0x47c3ec",
+     "rows": 17,
+     "cols": 19,
+     "data": "DEGC",
+     "desc": "Exhaust temperature model 2",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Model_3",
+     "addr": "0x47d1be",
+     "rows": 17,
+     "cols": 20,
+     "data": "DEGC",
+     "desc": "Exhaust temperature model 3",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Model_4",
+     "addr": "0x47d528",
+     "rows": 16,
+     "cols": 16,
+     "data": "DEGC",
+     "desc": "Exhaust temperature model 4",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "LambdaModel_1",
+     "addr": "0x4cc630",
+     "rows": 20,
+     "cols": 20,
+     "data": "DEGC",
+     "desc": "Exhaust temperature versus lambda 1",
+     "x": "RPM",
+     "y": "LAMB"
+    },
+    {
+     "name": "LambdaModel_2",
+     "addr": "0x4ccd08",
+     "rows": 15,
+     "cols": 17,
+     "data": "DEGC",
+     "desc": "Exhaust temperature versus lambda 2",
+     "x": "RPM",
+     "y": "LAMB"
+    },
+    {
+     "name": "LambdaModel_3",
+     "addr": "0x4cd07e",
+     "rows": 15,
+     "cols": 17,
+     "data": "DEGC",
+     "desc": "Exhaust temperature versus lambda 3",
+     "x": "RPM",
+     "y": "LAMB"
+    }
+   ]
+  },
+  {
+   "name": "InjectionTiming",
+   "desc": "Start of injection",
+   "maps": [
+    {
+     "name": "Correction_A",
+     "addr": "0x4adfe4",
+     "rows": 18,
+     "cols": 18,
+     "data": "DEG",
+     "desc": "Injection timing correction A",
+     "signed": true,
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Correction_B",
+     "addr": "0x4ae3aa",
+     "rows": 18,
+     "cols": 18,
+     "data": "DEG",
+     "desc": "Injection timing correction B",
+     "signed": true,
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Correction_C",
+     "addr": "0x4aeeae",
+     "rows": 18,
+     "cols": 20,
+     "data": "DEG",
+     "desc": "Injection timing correction C",
+     "signed": true,
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Correction_D",
+     "addr": "0x4b0782",
+     "rows": 20,
+     "cols": 20,
+     "data": "DEG",
+     "desc": "Injection timing correction D",
+     "signed": true,
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Correction_E",
+     "addr": "0x4b11d6",
+     "rows": 18,
+     "cols": 18,
+     "data": "DEG",
+     "desc": "Injection timing correction E",
+     "signed": true,
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Correction_F",
+     "addr": "0x4b1552",
+     "rows": 20,
+     "cols": 20,
+     "data": "DEG",
+     "desc": "Injection timing correction F",
+     "signed": true,
+     "x": "RPM",
+     "y": "IQ"
+    }
+   ]
+  },
+  {
+   "name": "ExhaustGasRecirculation",
+   "desc": "EGR",
+   "maps": [
+    {
+     "name": "Rate_1",
+     "addr": "0x497af4",
+     "rows": 17,
+     "cols": 20,
+     "data": "MG",
+     "desc": "Recirculation rate 1",
+     "x": "RPM",
+     "y": "IQ"
+    },
+    {
+     "name": "Rate_2",
+     "addr": "0x497e68",
+     "rows": 17,
+     "cols": 20,
+     "data": "MG",
+     "desc": "Recirculation rate 2",
+     "x": "RPM",
+     "y": "IQ"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,53 @@
+name,addr,rows,cols,dtype,copies,unit,factor,offset,stride
+# Bosch MEVD17.2.9 / BMW N20 (F18 CHINA, DST 9VU9G40B) --- ECM Titanium driver B20_8709
+# 几何(rows/cols/dtype/copies)全部经【数据块后自描述符 + 副本交叉验证】证实.
+# factor 的置信度分三档, 见 unit 后的注释行:
+#   PROVEN  : 0.1 Nm/bit  --- 由限扭曲线反算功率与铭牌 135kW 吻合 (4800rpm x 269Nm = 135.2kW)
+#   PROVEN  : 1/4096 Lambda/bit --- raw 4096 = lambda 1.000 (化学计量点)
+#   INFERRED: 1/128 %/bit, 1/16 hPa/bit, 1/16 Nm/bit(KFMIOP), 0.75 deg/bit --- 由轴结构与物理合理性反推
+# 没有 A2L 佐证, factor 仅用于显示; 倍率/raw 差值不依赖 factor, 永远可信.
+Optimal engine torque (KFMIOP),0x1A7F3C,18,20,u16,2,Nm,0.0625,0,
+Limiter of Maximum torque #2,0x1AACF8,12,10,u16,2,Nm,0.1,0,
+Limiter of Maximum torque #3,0x1AB02C,1,22,u16,3,Nm,0.1,0,
+Limiter of Maximum torque #7,0x1822BA,1,1,u16,1,Nm,0.1,0,
+Limiter of Maximum torque #8,0x18660A,1,1,u16,1,Nm,0.1,0,
+Limiter of Maximum torque #9,0x18AF36,1,1,u16,1,Nm,0.1,0,
+Limiter of Maximum torque #10,0x18AF4A,1,1,u16,1,Nm,0.1,0,
+Limiter of Maximum torque #11,0x18AF52,1,1,u16,1,Nm,0.1,0,
+Limiter of Maximum torque #12,0x18AF5A,1,1,u16,1,Nm,0.1,0,
+Maximum power limiter #1,0x1BA766,1,8,u16,1,kW,0.03125,0,
+Torque monitoring #3,0x1BB861,1,8,u8,1,,1,0,
+Torque monitoring #5,0x1D6D63,1,8,u8,1,,1,0,
+Engine torque correction,0x1B6084,1,8,u8,1,factor,0.0078125,0,
+Max engine torque correction f(ECT_T),0x1B5FDC,8,8,u8,1,factor,0.0078125,0,
+Engine load limiter #1,0x18B218,10,8,u16,1,%,0.0078125,0,
+Engine load limiter #2,0x18B2DE,10,8,u16,1,%,0.0078125,0,
+Engine load limiter #3,0x1AA9F4,6,6,u16,1,%,0.0078125,0,
+Engine load limiter #4,0x1AB16E,1,6,u16,1,%,0.0078125,0,
+Engine load limiter #5,0x1AB268,1,18,u16,1,%,0.0078125,0,
+Engine load limiter #6,0x1AB2D6,1,6,u16,1,%,0.0078125,0,
+Airflow mass through throttle valve,0x19177E,20,12,u16,1,kg/h,0.0625,0,
+Max relative air charge for cat diagnosis,0x1D906A,1,5,u8,1,%,1,0,
+Min relative air charge for cat diagnosis,0x1D9075,1,5,u8,1,%,1,0,
+Limiter of Turbo pressure #5,0x1B1822,1,8,u16,1,hPa,0.0625,0,
+Limiter of Turbo pressure #9,0x1B18FA,1,8,u16,1,hPa,0.0625,0,
+Limiter of Turbo pressure #10,0x1B19D8,1,8,u16,1,hPa,0.0625,0,
+Limiter of Turbo pressure #8,0x1AAFC0,1,6,u16,1,%,0.0078125,0,
+Limiter of Turbo pressure #2,0x1AB126,1,12,u16,1,%,0.0078125,0,
+Limiter of Turbo pressure f(IAT),0x1AAF1A,8,6,u16,1,hPa,0.0625,0,
+Correction of turbo pressure #1,0x1B34F8,4,4,u16,1,,1,0,
+Correction of turbo pressure #2,0x1B3620,4,4,u16,1,,1,0,
+Spark Advance base map #1,0x1B6918,20,16,s8,1,degBTDC,0.75,0,
+Spark Advance base map #2,0x1B6AA2,20,16,s8,4,degBTDC,0.75,0,
+Limiter of knocking sensor #3,0x1D4E4A,16,4,u8,4,,1,0,64
+Injection at full load,0x189C7A,1,8,u16,2,Lambda,0.000244140625,0,16
+Injection base map #1,0x18A08A,17,18,u16,1,Lambda,0.000244140625,0,
+Injection base map #2,0x18A2EE,17,18,u16,1,Lambda,0.000244140625,0,
+Injection base map #3,0x189810,17,18,u16,1,Lambda,0.000244140625,0,
+Lambda for component protection #1,0x189E26,17,18,u16,1,Lambda,0.000244140625,0,
+Lambda for component protection #2,0x185F22,4,4,u16,1,Lambda,0.000244140625,0,
+Lambda for component protection #3,0x186172,1,1,u8,1,,1,0,
+Lambda for component protection #4,0x189CA6,12,16,u16,1,Lambda,0.000244140625,0,
+Injection enrichment,0x18AB20,6,6,u16,1,Lambda,0.000244140625,0,
+Injection timing - Main Injection,0x194E00,10,12,u16,3,deg,0.0078125,0,
+Minimum voltage for MAP sensor diagnosis,0x18C2FE,1,1,u8,1,V,1,0,
