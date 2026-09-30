@@ -154,13 +154,26 @@ python scripts/rom_similarity.py stats        # 索引状态
 python scripts/rom_similarity.py --selftest   # 19 项自测
 ```
 
-索引默认落在 `~/.claude/rom_index.sqlite`,约 **1KB/文件**,10 万个文件约 100MB。
+索引默认落在 `~/.agents/rom_index.sqlite`（找不到时回退 `~/.claude/rom_index.sqlite`）,约 **1KB/文件**,10 万个文件约 100MB。
 实测吞吐约 **10 MB/s**(单线程),2MB 的 bin 约 5 个/秒;`--workers N` 近线性加速
 (实测并行与串行指纹**逐字节一致**,45/45)。**只有主进程写 SQLite**,不会有并发写锁。
 
 > `.hex` / `.s19` 是 **ASCII 文本**格式(Intel HEX / S-record)。同格式之间可比,
 > 但**与 `.bin` 互相测不出相似** —— 同一份 ROM 的 bin 与 hex 字节完全不同。
 > 要索引它们请**单独建库**(`--ext hex,s19 --db other.sqlite`),别和 bin 混在一起。
+
+---
+
+## 4.5 结果里的「同目录定义」列 —— 本技能的落点
+
+查询输出会检查每个候选**所在文件夹**里有没有 `.a2l` / `.daf` / `.ols` / `.kp` / `.xdf`，
+命中就在该列标出来。
+
+**这才是找同源文件的目的** —— 相似度本身不解决问题,旁边那份定义才解决。
+实测:库中 3220 个已索引 bin,**748 个(23%)同目录就有定义文件**。
+
+拿到之后:`.a2l`/`.daf` 交 `damos-a2l-parser`,`.ols`/`.kp` 交 `winols-ols-parser`,
+解出命名 + 地址 + 换算,再交 `ecu-map-analysis` 判功能。
 
 ---
 

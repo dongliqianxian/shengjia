@@ -24,8 +24,7 @@ python scripts/test_denso_bin.py
 ```
 
 ## Install
-- **Claude Desktop / Cowork**: install the packaged `.skill`, or drop the `denso-bin-engine/`
-  folder into your skills directory.
+- **Kimi Work**: drop the `denso-bin-engine/` folder into `~/.agents/skills/`.
 - **Codex**: copy the folder into your project; reference `SKILL.md` from `AGENTS.md`. Import or run
   `scripts/denso_bin.py` from the terminal.
 - **Cursor**: copy the folder in; add a pointer in `.cursorrules` to follow `SKILL.md` and use

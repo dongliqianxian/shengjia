@@ -47,7 +47,7 @@ description: >
 
 ```bash
 # Windows 默认位置：
-python "$HOME/.claude/skills/speed-limiter-removal/scripts/value_locate.py" \
+python "$HOME/.agents/skills/speed-limiter-removal/scripts/value_locate.py" \
        --bin ECU.bin --preset idle_rpm --curve
 ```
 

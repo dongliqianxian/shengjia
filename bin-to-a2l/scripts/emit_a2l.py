@@ -31,13 +31,13 @@ import argparse, json, os, re, struct, sys
 
 # kind -> (factor, unit, display format)
 KINDS = {
-    "RPM":  (0.5,     "rpm",    "%6.0"),
+    "RPM":  (0.5,     "rpm",    "%8.2"),
     "PEDAL":(1/81.92, "%",      "%6.2"),
     "IQ":   (0.01,    "mg/stk", "%6.2"),
     "TEMP": (0.1,     "degC",   "%6.2"),
     "LAMB": (0.01,    "-",      "%6.2"),
     "IDX":  (1.0,     "-",      "%4.0"),
-    "RAW":  (1.0,     "-",      "%6.0"),
+    "RAW":  (1.0,     "-",      "%8.2"),
     "PRESS":(0.1,     "bar",    "%6.2"),   # axis: rail/charge pressure breakpoints
     # Bosch EDC17 states injection quantity as VOLUME; MD1 states it as MASS.
     "MM3":  (0.01,    "mm3/stk", "%8.2"),
@@ -50,7 +50,7 @@ KINDS = {
     "DEGC": (0.1,     "degC",   "%8.2"),
     "DEG":  (0.1,     "deg",    "%8.2"),
     "US":   (0.1,     "us",     "%8.2"),
-    "LAM":  (0.001,   "-",      "%8.3"),
+    "LAM":  (0.001,   "-",      "%8.2"),
     "PCT":  (0.1,     "%",      "%8.2"),
 }
 IDENT = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]*$')
@@ -122,6 +122,9 @@ def build(data, spec, base):
             nm = m['name']
             if not IDENT.match(nm):
                 problems.append("illegal A2L identifier: %s" % nm)
+            if len(nm) > 32:
+                # ISO C90 identifier limit; INCA and other tools reject longer names.
+                problems.append("identifier too long (%d>32 chars): %s" % (len(nm), nm))
             if nm in used:
                 problems.append("duplicate name %s (A2L names must be globally unique)" % nm)
             used[nm] = g['name']

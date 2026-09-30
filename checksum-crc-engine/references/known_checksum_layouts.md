@@ -53,6 +53,15 @@
 |---|---|---|---|---|---|
 | GM E38/E92 等 | PowerPC **大端** | OS + 分段和 | 16 位分段和，HP Tuners/PCMHammer 写入时自动处理 | HP Tuners 自动 / PCMHammer | 📖 公开资料 |
 
+## 韩系（Hyundai / Kia — Kefico）
+
+| 平台 | MCU | 层级 | 算法/结构 | 修复路径 | 状态 |
+|---|---|---|---|---|---|
+| SIMK41 / SIMK43 / SIMK2K | C166/C167 **小端** | 单层数据 CRC：Boot /（MTOS/RSW）/ Calibration / Program 各一个 CRC-16，**无程序 CRC、无签名** | 反射 CRC-16 poly 0xA001；**seed 取自文件内 ASCII 版本字段**，不是 0x0000/0xFFFF；多 zone 链式；存储时字节交换 | **`scripts/simk4x_checksum.py`（本地算完即可刷）** | ✅ 实战确认 |
+
+> 这是本库里少数**可以本地算完就交付**的平台之一 —— 它没有 EDC17/MED17 那层程序 CRC，
+> 也没有 MD1/MG1 的 RSA。别把"现代=Bosch=多层"的直觉套上来（doctrine 原则#1：PCM 不在乎车标）。
+
 ---
 
 ## 新增条目流程（与 SKILL.md "honest workflow" 一致）
@@ -65,7 +74,49 @@
 
 ## ✅ 实战确认条目（逐条追加，含完整参数）
 
-（暂无。第一条实战确认后按下面模板追加：）
+（第一条已落地，见下。后续按同样格式追加。）
+
+### Kefico SIMK43 — 现代途胜 2.7 V6 (127kW, 2010) — 2026-09-02
+
+```
+文件: AM29F400BB@SOP44_20260804_94406_OR.BIN（512KB, AM29F400BB@SOP44）
+      零件号 M39110-37100 / KR77035410 / 5WY1F42B / 标定包 ca655027.DAT
+镜像类型: v6 (5WY18+)   —— identification flag @0xEEFE == b"OK"
+
+算法（不套 ChecksumBlock —— 它表达不了「链式 + 文件内取 seed」，用脚本）:
+    反射 CRC-16, poly 0xA001 (= 0x8005 反射), 无 final xor
+    == crcmod.mkCrcFun(0x18005, initCrc=seed)
+    seed = init_address 处 2 字节【字节交换】后的值；那 2 字节是文件里的 ASCII 版本字段
+    多 zone: zone1 用 ASCII seed, zone_n 用 zone_{n-1} 的 CRC 做 seed（链式）
+    写回: 最后一个 zone 的 CRC【高低字节交换】后大端写入 cks_address
+    zone 表: cks_address 处 [chk u16 BE][zones u8][pad]，其后 N 组 [start u32 LE][end u32 LE]，
+             步进 8 字节；end 为闭区间 → 实际范围 [start, end+1)；地址加 bin_offset
+
+| 区          | init_address | cks_address | bin_offset  | 本文件实际范围            | seed   | 存储值 |
+|-------------|--------------|-------------|-------------|---------------------------|--------|--------|
+| Boot        | 0x003FE4     | 0x003EF4    | 0           | 0x000000-0x003DFF         | 0x2D2D | 0x0A05 |
+| Calibration | 0x00800C     | 0x00EEE0    | -0x080000   | 0x008000-0x00E395         | 0x3732 | 0xEFEF |
+| Program     | 0x010052     | 0x010010    | -0x080000   | 5 段链式 0x010210-0x05470B| 0x3031 | 0x3208 |
+
+验证: 三个区在 ORI 上【全部精确复现存储值】（3/3 独立命中，证据等级 A）；
+      Stage1.2/1.3 改标定区后 Calibration 失配、Boot+Program 仍一致 —— 与"只改了标定区"吻合；
+      repair 后回读重算三区全 OK，全文件仅 2 字节变动（cks 槽位本身）。
+      实车刷写回读：待补。
+
+★ 踩坑记录（这条是本条目最大的价值）:
+  最初对整片 flash 做了 sum8/sum16/sum32/xor + 6 种标准 CRC-16 + CRC-32 的范围穷举，
+  【0 命中】，一度误判"本镜像无可重算校验和"。原因：穷举默认 init=0x0000/0xFFFF，
+  而本平台 seed 来自文件内的 ASCII 字段（0x3732 = "27"）。
+  → 教训: 穷举 CRC 时"init 是常数"是一个【未言明的假设】。扫不到不等于没有；
+    先去找开源实现/固件算术（doctrine §13.1 刻度需两条独立证据、§13.2 走原始字节）。
+  → 本例的破局点是开源工具 GKFlasher（见下），不是继续加大穷举力度。
+
+算法来源: GKFlasher <https://github.com/Dante383/GKFlasher> flasher/checksum.py (GPL-3.0)
+          —— SIMK43/41 的开源刷写工具（KWP2000 over K-line/CAN，含 bootstrap/kernel/驱动、
+             immo/SMARTRA 模块）。偏移表沿用其数据，脚本为算法独立复刻，遵守 GPL-3.0。
+```
+
+后续条目模板：
 
 ```
 ### <平台> <车型> <日期>

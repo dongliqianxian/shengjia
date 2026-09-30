@@ -154,6 +154,6 @@ python scripts/test_denso_bin.py
 All cases should pass (encoding round-trips, real-file read, diff, write+readback, multi-page math).
 
 ## Install / portability
-Pure Python 3, no dependencies. In Claude Desktop place the folder in your skills directory; in
+Pure Python 3, no dependencies. In Kimi Work place the folder in `~/.agents/skills/`; in
 Codex/Cursor copy the folder into the project and reference `SKILL.md` from your agent config —
 `scripts/denso_bin.py` can be imported or run from the terminal in any of these tools.

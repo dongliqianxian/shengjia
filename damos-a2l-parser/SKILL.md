@@ -96,23 +96,35 @@ A2L 和 DAMOS 是 ECU 标定的"地图"——它们告诉你在哪里找什么 M
 
 ```
 /begin COMPU_METHOD "NAME"
-    "FORM"                 /* FORM / TAB_TAB / TAB_VERB / RAT_FUNC */
-    "coeff1 coeff2 coeff3" /* 公式系数 */
+    "描述"
+    RAT_FUNC               /* 换算类型: IDENTICAL/LINEAR/RAT_FUNC/FORM/TAB_INTP/TAB_NOINTP/TAB_VERB */
+    "%.3f"                 /* 显示格式 */
     "UNIT"                 /* 物理单位 */
+    COEFFS 0 1 0 0 0 1     /* RAT_FUNC 六系数 a b c d e f */
 /end COMPU_METHOD
 ```
 
-常见换算：
+**六种换算类型（不要都当成线性 factor/offset）**：
+
+| 类型 | 系数/内容 | phys 怎么算 |
+|---|---|---|
+| `IDENTICAL` | 无 | `phys = raw` |
+| `LINEAR` | `COEFFS_LINEAR a b`，方向 **PHYS=f(INT)** | `phys = a·raw + b` |
+| `RAT_FUNC` | `COEFFS a b c d e f`，方向 **INT=f(PHYS)（反的）** | 见下 |
+| `FORM` | 表达式字符串（可含系统常量、`FORMULA_INV`） | 按表达式，非线性 |
+| `TAB_INTP`/`TAB_NOINTP` | 轴-值点对 | 查表，插值 / 阶梯 |
+| `TAB_VERB` | raw→文本枚举 | 模式码，无数值含义 |
+
+**⚠ RAT_FUNC 方向陷阱（最高频错误）**：标准是 `INT = (a·P²+b·P+c)/(d·P²+e·P+f)`，
+把 **raw 表示成 phys 的函数**，与 LINEAR 相反。绝大多数是 `a=d=e=0` 的伪线性：
 
 ```
-Bosch 标准线性：phys = raw x factor + offset
-示例：
-"FORM 1.0 0.0 1.0"    → phys = raw (1:1, 如 Nm)
-"FORM 0.75 -128.0 1.0" → phys = raw x 0.75 - 128 (点火角，Int8)
-"FORM 0.0078125 0.0 1.0" → phys = raw / 128 (Lambda)
-"FORM 0.1 0.0 1.0"    → phys = raw x 0.1 (百分比, 0.1%/位)
-"FORM 1.0 -1013.0 1.0" → phys = raw - 1013 (绝对→相对压力)
+INT = (b·P + c)/f   →   phys = (f·raw − c)/b   →   等效 factor = f/b, offset = −c/b
 ```
+
+例：`COEFFS 0 128 0 0 0 1` → factor = 1/128 = 0.0078125（λ），**不是** ×128。
+真二次（`a≠0`/`d≠0`）一般无闭式逆 → 标「需人工/pya2l 求逆」，不硬折成线性。
+换算细节与更多类型交 `winols-scaling-converter`「非线性换算」一节。
 
 ### 2.4 AXIS_DESCR 解析
 
@@ -161,22 +173,36 @@ A2L ECU_ADDRESS  ──(减去内存段基址)──>  文件偏移  ──> 交
 - 自检:按算出的偏移读回来,**值域必须落在物理合理带**;离谱 = 基址或别名没处理对,
   **不要靠调 factor 去凑**(doctrine §13.1 不许反向拟合)
 
-## 2.7 解析后端:正则 vs `pyA2L`(待评估,不是已决策)
+## 2.7 解析后端:正则(默认) vs `pya2ldb`(已评估,复杂 A2L 的备用引擎)
 
-现有 `scripts/parse_a2l.py` 是正则实现,覆盖常见结构。**已知不足**(遇到以下情形考虑换后端):
+现有 `scripts/parse_a2l.py` 是正则实现,覆盖常见结构、够快、零依赖,**默认用它**。**已知不足**
+(遇到以下情形换后端):
 
 | A2L 结构 | 正则后端 | 影响 |
 |---|---|---|
 | `RECORD_LAYOUT` | 部分 | 复杂布局(轴内嵌/带符号/交错)可能解错 |
-| `COMPU_METHOD`(RAT_FUNC / TAB_VERB) | 部分 | 非线性换算、枚举文本可能丢 |
+| `COMPU_METHOD`(RAT_FUNC / FORM / TAB_VERB) | 部分 | 非线性换算、枚举文本可能丢 |
 | `FUNCTION` / `GROUP` 层级 | 弱 | 功能分组关系拿不全 |
 | 内存段(`MEMORY_SEGMENT`) | 弱 | **基址推断缺依据**(见 §2.6) |
 | 变体编码(variant coding) | 无 | 多变体 ECU 会误判 |
 
-**判据**:上述结构只要有一项影响本次任务的结论,就**明说"当前后端覆盖不到,需人工核对或换 pyA2L"**,
+**判据**:上述结构只要有一项影响本次任务的结论,就换后端或明说"需人工核对",
 **不要静默给一个不完整的解析结果**(doctrine §13.5 负面结论是终态)。
 
-> *依据 doctrine §13.1 逆向纪律（不许反向拟合刻度）与 §13.5（负面结论是终态）；`pyA2L` 评估项待定。*
+**备用后端 = `pya2ldb`（PyPI 名，import 名 `pya2l`；评估结论 证据 A，已读源码）**：
+工业级 ASAM MCD-2MC 解析库，C++(ANTLR) 后端解析→SQLite 库。**正好补齐上表五项**——
+`RECORD_LAYOUT` 完整解析 + 字节尺寸/对齐计算、`functions.py` 有 RAT_FUNC/FORMULA/查表的
+**正确换算实现**(见 §2.3 方向陷阱)、`FUNCTION`/`GROUP` 层级、`MEMORY_SEGMENT`。
+```bash
+pip install pya2ldb          # Windows 一般有预编译 wheel；源码装需 C++ 工具链
+```
+**诚实边界（不能替代本技能的部分）**：
+- **只读 A2L 描述侧，不读 bin/flash 字节**——它给地址+布局+换算公式，字节仍交 bin 引擎。
+- **只吃标准 A2L，不解 DAMOS**（Bosch 私有格式）——DAMOS 仍走本技能 §3。
+- 没有 A2L 的盲逆向场景它完全用不了 → 交 `blind-map-finder` / `bin-to-a2l`。
+
+> *依据 doctrine §13.1 逆向纪律（不许反向拟合刻度）与 §13.5（负面结论是终态）。
+> `pya2ldb` 定位为「复杂 A2L 的参考/备用解析引擎」，不改变本技能「读定义、不碰字节、DAMOS 归自己」的主线。*
 
 ## 3. DAMOS 格式解析
 

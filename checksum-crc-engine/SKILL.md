@@ -41,6 +41,18 @@ A configurable, tested CRC + sum engine for the cases you CAN own:
 ```bash
 python scripts/crc.py --selftest            # verifies against standard CRC/sum check vectors
 ```
+
+**Platform scripts — check these BEFORE deriving anything.** A platform with a confirmed script is
+solved; don't re-derive it:
+
+| Platform | Script | Status |
+|---|---|---|
+| Kefico **SIMK41 / SIMK43 / SIMK2K** (Hyundai/Kia, C166/C167) | `scripts/simk4x_checksum.py` | ✅ 实战确认 — **本地算完即可刷**（无程序 CRC、无签名） |
+
+```bash
+python scripts/simk4x_checksum.py file.bin              # verify only
+python scripts/simk4x_checksum.py file.bin -w out.bin   # verify + repair mismatched regions
+```
 ```python
 from crc import CRC_PRESETS, crc, sum_checksum, ChecksumBlock, load, save
 
@@ -81,7 +93,16 @@ Before deriving anything from scratch, consult `references/known_checksum_layout
 per-platform table (Bosch / Conti / DENSO / Hitachi / GM ...) of checksum layer, algorithm/structure,
 and the correct repair path, each entry marked ✅实战确认 / 🔧工具路径确认 / 📖公开资料. Treat 📖
 entries as direction only — verify per the workflow below before relying on them. Every time a
-platform is confirmed in practice, append it there with full `ChecksumBlock(...)` parameters.
+platform is confirmed in practice, append it there with full `ChecksumBlock(...)` parameters
+(or, when the scheme doesn't fit `ChecksumBlock` — chained CRCs, seeds read out of the file — a
+script under `scripts/` plus the parameter table, the way SIMK4x is recorded).
+
+> **⚠ Brute-forcing CRC presets carries an unstated assumption: that `init` is a constant.**
+> Kefico SIMK4x takes its CRC seed from an **ASCII version field inside the file**, so a full
+> sum/CRC range sweep with init=0x0000/0xFFFF returns **zero hits** — and "zero hits" reads exactly
+> like "this image has no recomputable checksum". It isn't. Before concluding a platform is
+> proprietary/signed, go look for an open-source implementation or the firmware's own arithmetic
+> (doctrine §13.2 走原始字节). See the SIMK43 踩坑记录 in the reference file.
 
 ## 逐镜像检测,不按控制器名查固定表(doctrine §13 逆向纪律,实证)
 

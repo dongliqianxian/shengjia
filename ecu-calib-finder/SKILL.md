@@ -23,9 +23,9 @@ This skill finds, ranks, and judges the usability of calibration files in a loca
 (`E:\ECU_Tuning_Projects` by default) against a given target ECU file.
 
 It works across two kinds of environments and adapts automatically:
-- **File-system environments** (Claude Desktop with filesystem access, Codex, Cursor) — scan the
+- **File-system environments** (Kimi Work with filesystem access, Codex, Cursor) — scan the
   library directly with `scripts/scan_library.py`.
-- **Upload-only environments** (claude.ai web) — cannot read the disk; guide the user to provide a
+- **Upload-only environments** (web chat without disk access) — cannot read the disk; guide the user to provide a
   file list, then match against that.
 
 The library covers five ECU brands: **Bosch, Continental, Siemens/VDO, Delphi, DENSO**. Because the
@@ -47,7 +47,7 @@ Before anything, determine whether you can read the library directory.
 1. Try to access the library root. Default: `E:\ECU_Tuning_Projects`. (On non-Windows test
    environments, the user may give a different path — use whatever they provide.)
 2. If you have a shell or file tools and the path is readable → **Mode A (direct scan)**.
-3. If you cannot reach the disk (e.g. claude.ai web) → **Mode B (list-assisted)**.
+3. If you cannot reach the disk (e.g. web chat without file tools) → **Mode B (list-assisted)**.
 4. If unsure, attempt Mode A; on failure, fall back to Mode B and say why.
 
 **Never pretend to have scanned files you did not actually read.** If you didn't read it, say so and
@@ -190,8 +190,7 @@ map-by-map diff here.**
 ## Installation note (for the user)
 
 This skill is portable. To use it across tools:
-- **Claude Desktop / Cowork**: place the `ecu-calib-finder/` folder in your skills directory, or
-  install the packaged `.skill` file.
+- **Kimi Work**: place the `ecu-calib-finder/` folder in `~/.agents/skills/`.
 - **Codex / Cursor**: point the agent at this folder, or copy `SKILL.md` content into your project's
   agent instructions (e.g. `.cursorrules` / `AGENTS.md`), and keep `scripts/` + `references/`
   alongside so the scanner and brand signatures are available.

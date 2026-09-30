@@ -16,12 +16,11 @@ ecu-calib-finder/
     └── file_types.md              # how each file type is treated
 ```
 
-## Install — Claude Desktop / Cowork
-Option A (packaged): install the `ecu-calib-finder.skill` file through the app's skill installer.
-Option B (folder): copy the `ecu-calib-finder/` folder into your Claude skills directory.
-
-The skill triggers automatically when you mention your calibration library, ask to find a matching
-DAMOS/A2L, ask if a file is flashable, or name an ECU/MCU and ask for a library match.
+## Install — Kimi Work
+Option A (folder, recommended): copy the `ecu-calib-finder/` folder into `~/.agents/skills/`.
+The skill then appears in the skills index and triggers automatically when you mention your
+calibration library, ask to find a matching DAMOS/A2L, ask if a file is flashable, or name an
+ECU/MCU and ask for a library match.
 
 ## Install — Codex
 1. Copy the `ecu-calib-finder/` folder into your project (e.g. `./skills/ecu-calib-finder/`).
@@ -47,7 +46,7 @@ DAMOS/A2L, ask if a file is flashable, or name an ECU/MCU and ask for a library 
   python scripts/scan_library.py "E:\ECU_Tuning_Projects" --target "E:\path\to\target.bin" --out index.json
   ```
   Then ask the agent to read `index.json` and produce the usability report.
-- Web (claude.ai): the skill will ask you to export a file list
+- Web (no disk access): the skill will ask you to export a file list
   (`dir /s /b /a-d E:\ECU_Tuning_Projects > filelist.txt`) and upload it, then upload top candidates.
 
 ## Customizing

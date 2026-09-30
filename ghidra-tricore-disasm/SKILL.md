@@ -120,7 +120,7 @@ specific platforms — see `ghidra-ida-setup` for resources.
 ## ReVa (Ghidra MCP) — 什么时候能用，什么时候必须回反汇编清单
 
 `cyberkaida/reverse-engineering-assistant` 是 Ghidra 扩展，把 xref / 常量搜索 / 内存读取等
-暴露给 Claude Code 直接调用，补上确认链里「ghidra 坐实」这一环。**硬要求 Ghidra ≥ 12.0。**
+暴露给 Agent（Claude Code / Kimi 等）直接调用，补上确认链里「ghidra 坐实」这一环。**硬要求 Ghidra ≥ 12.0。**
 
 ```
 盲扫候选  →  解码自检  →  【ghidra xref 坐实】  →  功能判定  →  scaling

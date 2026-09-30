@@ -1,159 +1,95 @@
 ---
 name: hp-tuners-log-review
 description: >
-  HP Tuners / 通用数据流 LOG 分析技能。当用户粘贴 LOG 截图、CSV 导出、或贴出
-  数据通道（如 Knock Retard、STFT、LTFT、Lambda、AFR、Boost、WGDC、Torque Req/Actual、
-  IAT、EGT、Rail Pressure、Spark Adv、Ign Timing、Cyl Trims、MAF g/s、O2 voltage、
-  Misfire counter、Cam phaser、Fuel Pressure、Knock Sensor V）时，必须立即调用本技能。
-  即使用户只发"帮我看下 LOG""数据正常吗""有没有爆震""为什么动力上不去"，也要调用。
-  注意：.hpl 是 HP Tuners 私有二进制格式，本技能不解析、也不打算逆向——用户发 .hpl 时
-  请其发关键通道截图（首选）或 VCM Scanner 导出的 CSV，再按截图/CSV 分析。
-  本技能专注于 LOG 诊断：识别爆震介入、扭矩干预、保护策略触发、VE/Lambda 偏差，
-  并输出"问题清单 + 修正动作 + 下一次 LOG 该看什么"。不输出完整 Stage 方案。
+  HP Tuners 与通用 ECU/TCU LOG 诊断技能。用于 CSV、截图或通道数据中的 knock、lambda/AFR、STFT/LTFT、
+  boost/WGDC、torque request/actual、IAT/ECT/EGT、轨压、失火、凸轮和换挡干预分析。先确认通道定义、
+  单位、采样率、工况和基准，再建立时间对齐的因果链；不使用跨平台固定阈值替代 OEM 定义和基准 LOG。
+  Bosch ME7 的 KFMIRL/KFMIOP、`rlsol/rl_w/mibas/mimax/zwsol` 诊断读取 ME7 扭矩 LOG 专项参考。
+  `.hpl` 不在本技能中逆向，需导出 CSV 或提供可读截图。
 ---
 
-# HP Tuners / 通用 LOG 数据诊断
+# HP Tuners / Generic LOG Review
 
-## 角色
+## 1. 输入门槛
 
-ECU 控制策略工程师 + 改装调教师双视角。读 LOG 不是看数字，是看 **控制环路的因果链**：监控量异常 → 找输入量 → 找标定 MAP → 给修正动作。
+先确认：
 
-诊断方法以 Greg Banish 为基准：传感器误差与标定误差同等致命；VE 偏差超出可接受档(>5%)必须先校 VE 再谈调教。
+1. 车辆、发动机、ECU/TCU、HW/SW/Cal ID、燃料和硬件。
+2. 工具、通道定义、单位、正负号和采样率；同名 `Torque Actual` 在不同平台含义可能不同。
+3. 工况：档位、RPM/load、节气门、环境、ECT/IAT、测试持续时间。
+4. 文件版本和改动清单；至少有原厂或已知良好版本的基准 LOG。
+5. 宽氧、压力、EGT 等传感器的安装位置、量程和延迟。
 
-## 诊断顺序（doctrine 强加，按此排序，不要从最显眼的异常开始）
+`.hpl` 是私有格式。无法可靠读取时要求 VCM Scanner CSV 或关键通道截图，不假装解析。
 
-1. **先判空气模型**：MAF 是否 pegging、MAP 是否超量程、喷油器 duty 是否打满、LTFT 是否超 ±3%。
-   这一层错，下面所有通道的判读都是错的 → 修模型交 `air-fuel-model-builder`。
-2. **再判闭环在做什么**：不要只看被控量本身（λ 达标 / 无爆震），要看**闭环修正量**——
-   爆震闭环长期回退 4° 的"无爆震"是闭环在救命，权限用尽就炸。判据与 trim 归账方法论见
-   `closed-loop-control`。
-3. **再判 Balancing**：爆震介入 vs 扭矩干预，当前在爆震限的哪一侧、离保护阈值多远。
-4. **最后判扭矩链**：Torque Req vs Actual 偏差大 = 限制器/监控在干预 →
-   结构因果交 `torque-model-builder`，各厂具体限制器名交 `oem-strategy-library`。
+## 2. 先校验数据质量
 
-本技能出**诊断结论 + 修正动作**；整套改法交 `stage1-calibration-matrix`，单表拆解交 `ecu-map-analysis`。
+- 时间戳是否单调、采样率是否足以看瞬态、通道是否同一时基。
+- MAP/boost 是绝对压还是表压；AFR 使用哪种燃料化学计量比；lambda 是否已归一化。
+- knock 值是 retard、learned correction、sensor level 还是 diagnostic flag。
+- torque 是 requested、indicated、delivered、axle 还是 transmission input。
+- EGT 是实测还是模型，测点在涡轮前/后还是汇流处。
+- 信号是否钳位、丢样、量程打满或被计算通道二次处理。
 
-## 输入识别（先确认 5 件事）
+数据定义不清时先标 `UNKNOWN`，不做阈值诊断。
 
-1. **车型 / 发动机 / ECU**（影响通道含义，GM E38 的 Boost ≠ Ford PCM 的 Boost）
-2. **LOG 工具**：HP Tuners VCM Scanner / Cobb AP / EcuTek / OpenECU / SCT / 通用 OBD
-3. **驾驶场景**：怠速 / 巡航 / WOT pull / 部分负荷 / 起步
-4. **车辆状态**：原车 / 已刷 Stage1 / 改装件清单
-5. **燃油**：91/93/E10/E30/E85（强烈影响 Knock 与 Lambda 判读）
+## 3. 因果链
 
-> 文件格式：`.hpl` 是 HP Tuners 私有二进制，本技能不解析、也不逆向（已决策）。
-> 收到 .hpl 时请用户改发**关键通道截图**（首选，日常够用）或 VCM Scanner 导出的 CSV，
-> 再按截图/CSV 流程分析；绝不假装已读取 .hpl 内容。
+### 3.1 Knock / spark
 
-## 关键通道速查表
+看重复性、缸别、负荷、转速、IAT/ECT、燃油、点火命令与修正的时间关系。单个瞬态 KR 不等于真实爆震；
+可重复且随负荷/温度/低辛烷增强的回退更值得警惕。持续或加重的疑似真实爆震立即停止高负荷测试并回退。
 
-### 燃烧与爆震
-| 通道 | 正常 | 警戒 | 异常 | 说明 |
-|------|------|------|------|------|
-| Knock Retard (°) | 0 ~ -1 | -2 ~ -3 | < -4 持续 | 全转速持续 = 油品/IAT；某区间 = 该区点火过激 |
-| Cyl Knock Retard | 各缸 ±1° | 单缸 -3° | 单缸 -5° | 单缸异常 = 喷油/积碳/火花塞 |
-| Spark Advance Actual | 与 MAP 表 ±1° | 偏差 3° | 偏差 >5° | 偏差大 = 修正量过多，先查 IAT/Knock |
-| Knock Sensor Voltage | 平稳 | 周期性尖峰 | 持续高电压 | 真爆震 vs 机械噪声需结合 Retard 看 |
+### 3.2 Lambda / trims / fuel
 
-### 燃油修正
-| 通道 | 正常 | 警戒 | 异常 | 说明 |
-|------|------|------|------|------|
-| STFT (%) | ±5 | ±8 | >±10 | 实时短期修正，瞬态正常 |
-| LTFT (%) | ±3 | ±5 | >±8 | 长期偏移 = VE 错 / 喷嘴 / 进气泄漏 |
-| Lambda 实际 vs 目标 | 偏差 <0.03 | 0.05 | >0.05 | VE 偏差导致 |
-| AFR Commanded vs Actual | 偏差 <0.5 | 0.8 | >1.0 | 同上 |
+区分闭环与开环、命令值与实测、传感器延迟。确认 STFT/LTFT 的组合方式；稳定单向偏差先查泄漏、燃压、
+喷油器、传感器和 MAF/VE，再决定是否归账。WOT 供油不足同时看 duty、压力差和 lambda 跟随。
 
-### 进气与增压
-| 通道 | 正常 | 警戒 | 异常 | 说明 |
-|------|------|------|------|------|
-| Boost 实际 vs 目标 | 偏差 <50 mbar | 100 mbar | >150 mbar | 偏低 = 涡轮/WGDC/泄漏；偏高 = 过冲，需 PID |
-| WGDC (%) | 中段 30–70 | 接近 0 或 100 | 一直 100 | 顶死 = 涡轮饱和或目标过高 |
-| MAF g/s | 与负荷 MAP 一致 | 偏差 5% | >10% | MAF 老化 / Speed Density 失配 |
-| MAP (kPa/mbar) | 与 Boost 一致 | — | 跳变 | 传感器问题或软管漏 |
-| IAT (°C) | <50 | 50–65 | >65 持续 | 中冷不足，爆震风险陡增 |
+### 3.3 Boost / air path
 
-### 扭矩与监控
-| 通道 | 正常 | 警戒 | 异常 | 说明 |
-|------|------|------|------|------|
-| Torque Request | 跟随踏板 | — | 跳变到低值 | TCU / EGT / CAT / Driver Limit 介入 |
-| Torque Actual vs Req | 偏差 <5% | 10% | >15% | 监控干预 = 爆改后 limiter 没改完 |
-| Driver Pedal % | 0–100 | — | 实际扭矩远低于踏板 | Driver Wish MAP 被压制 |
+把 target、actual、pre-control/WGDC、PID correction、节气门、旁通阀、环境压力和转速对齐。区分稳态偏差、
+瞬态过冲、执行器饱和、泄漏和涡轮/压气机能力；不能仅凭 WGDC 100% 判定某一种根因。
 
-### 排温与保护
-| 通道 | 正常 | 警戒 | 异常 | 说明 |
-|------|------|------|------|------|
-| EGT (°C) | <850 | 850–900 | >900 持续 | 接近热保护 |
-| ECT 冷却液 (°C) | 85–105 | 105–110 | >115 | 风扇/冷却问题 |
-| CAT 温度（模型） | <950 | 950–1000 | >1000 | CAT 保护即将加浓 |
+### 3.4 Torque intervention
 
-### 共轨柴油专用
-| 通道 | 正常 | 异常 | 说明 |
-|------|------|------|------|
-| Rail Pressure 实际 vs 目标 | 偏差 <20 bar | >50 bar | 泵/喷嘴磨损 |
-| Injection Quantity (mg/stk) | 与扭矩需求一致 | 突然下降 | DPF/EGT/烟度限制 |
-| SOI (°BTDC) | 与 MAP 表一致 | 大偏差 | 修正过多 |
+对齐 pedal/requested/allowed/actual/indicated torque、节气门、点火效率、断缸、TCU reduction request、
+traction/ESP、温度和故障状态。请求下降可能是正常换挡/稳定控制，不自动判成 limiter bug。
 
-## 诊断输出固定结构
+Bosch ME7 的请求负荷、最大负荷、KFMIOP 双重调用和点火路径诊断读取
+[references/bosch-me7-torque-log.md](references/bosch-me7-torque-log.md)。不要把 `rlmax/rlmx` 当成当前
+请求负荷，也不要把平台文档中的 Level 1/2 名称直接等同于通用三级功能安全监控。
 
-```
-### 1. LOG 概况
-- 工况：…（怠速/巡航/WOT，第几档，RPM/Load 范围）
-- 时长 / 采样率
-- 关键观察点（pull 起止时间）
+### 3.5 Temperature / protection
 
-### 2. 异常项清单（按严重度排序）
-🔴 严重：…（必须立即处理）
-🟡 警戒：…（建议下一版优化）
-🟢 正常：…（确认健康）
+按测点、模型/实测、持续时间和 OEM/部件限值判断。不要套用统一 IAT、EGT、CAT 或轨压差阈值。保护介入
+应通过 enable/status、命令变化和相关模型共同确认。
 
-### 3. 因果链分析
-对每个异常：
-现象 → 直接原因 → 上游标定 MAP → 验证方法 → 修正动作
+## 4. 输出结构
 
-例：
-WOT 区间 Knock Retard -4°（4500–6000 rpm, >90% load）
-→ 直接原因：点火过激或 IAT 过高
-→ 上游 MAP：Spark Advance Main（4500–6000×90–100%）/ Knock Retard by IAT
-→ 验证：看同 pull 的 IAT 是否 >60°C
-→ 修正：若 IAT 正常，该区域点火 -2°；若 IAT 高，先查中冷
+```text
+LOG 概况：版本 / 工况 / 采样率 / 通道定义 / 数据缺口
 
-### 4. 控制干预识别
-- TCU 扭矩干预：是否在换挡瞬间出现 Torque Req 下降
-- EGT 保护：Lambda 是否在高负荷加浓到 0.78 以下
-- CAT 保护：长期巡航 Lambda 是否被强制 1.0
-- Driver Limit：踏板 100% 但 Torque Req 未跟上
-- Misfire：失火计数器是否累加
+观察事实（OBSERVED）：
+时间区间 | 通道变化 | 单位 | 持续时间
 
-### 5. 下一步动作
-- 立即修正：…（哪张 MAP / 哪个区间 / 改多少）
-- 下次 LOG 必看通道：…（重点对比项）
-- 是否需要校 VE：判断标准 LTFT > ±5% 或 Lambda 偏差 >0.05
+问题排序：
+严重度 | 现象 | 根因候选 | 支持证据 | 反证 | 置信度
 
-### 6. 数据可信度提示
-- 传感器是否正常（O2 是否切换、MAF 是否合理、Knock 电压是否震荡）
-- 工况是否充分（部分负荷 → WOT → 巡航是否齐全）
-- 燃油品质提示（如怀疑爆震来自油品，建议换油重测）
+控制链：
+输入 -> 请求 -> 执行 -> 实际 -> 反馈/保护
+
+下一步：
+立即回退条件 | 需要补录通道 | 最小复测 | 可能关联 MAP
 ```
 
-## 常见误判提醒
+## 5. 修改纪律
 
-- **WOT 时 STFT 在动**：很多 ECU WOT 进入开环（Open Loop），STFT 数值仅供参考，不要据此调 VE
-- **爆震学习值未清**：刷写后未清 KAM，前几次 LOG 的爆震/燃油修正都不准
-- **冷车 LOG**：水温 <70°C 时 Lambda/Spark 都在冷启动 MAP，不代表热车标定
-- **海拔/气压**：高海拔 Boost 目标会自动下调，别误判涡轮无力
-- **DCT 换挡瞬间**：Torque Req 会主动降低保护离合器，不是 limiter bug
+- LOG 技能给诊断和修正方向；完整 Stage 矩阵交 `stage1-calibration-matrix`。
+- 只有根因达到 `VERIFIED` 且有基准/回退条件时才给具体 MAP 区域和首次步长。
+- 不通过扩大闭环权限、抬保护阈值或关闭监控来“让 LOG 好看”。
+- 刷写后是否清学习值按平台/OEM 流程决定，不把断电或一律清 KAM 当通则。
 
-- **怠速点火摆 10°**：**正常**，是闭环调速；但摆到 **20–30°** 是**负荷测量或转速拾取问题**，
-  拿燃油 trim 去调它是白费功夫（Banish 明确点名的经典时间黑洞）
-- **怠速喷油脉宽异常大**：往往不是喷油器脏，是**别处的传感器或修正曲线严重偏离**，回去查上游
-- **宽氧显示稀**：可能是**失火**（大量未燃 O₂ 被读成稀），先排除失火再谈加油；
-  高负荷失火常因缸内密度大、火花跨不过间隙 → 查火花塞间隙而非燃油
-- **无爆震声的重顿挫**：可能是点火**不足**导致燃烧过晚，与失火手感几乎一样 → 可尝试**加**点火
-- **传感器 pegging 后 Calculated Load 反而下降**：转速升高但传感器封顶 → 算出的负荷变小 →
-  工况点在负荷轴上**向下漂移**，实际生效的是另一批低负荷 cell。核对时要看**实际被用到的那批 cell**
-- **排温高就退点火**：**反了**。退点火会**抬高**排温（doctrine §8.1 退点火抬排温），正确链路是先加点火 → 撞爆震限再加浓
+## 6. 安全停止规则
 
-## 安全提示
-
-- LOG 出现严重爆震（Retard < -4° 持续）时，**立即停止 WOT 测试**，回退方案再上路
-- 任何"先试一下"的修正必须有备份和退路（保留上一版 bin）
+出现可重复且加重的爆震迹象、lambda 失控、燃压跟随失败、持续滑摩、超温、失火快速累加或传感器量程
+打满时，停止 WOT/高负荷测试，恢复已知良好版本并先排除硬件问题。

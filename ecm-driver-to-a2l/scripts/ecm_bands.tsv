@@ -1,0 +1,34 @@
+# ECM display name (regex) => unit  lo  hi
+# 名字决定的物理带，比单位带窄。只有对象单位与这里一致时才生效；第一条命中即用。
+# 为什么需要：单位带太宽会让错的刻度混过去——实测 'deg' 带 (−100..720) 放行了 380..590° 的凸轮相位，
+# 'degC' 带放行了 626.85 °C 的风扇启动温度。
+# 为什么要宽一点：太窄同样出错——实测 9000 rpm 上限把 9200 rpm 的高阈值逼成了 ×0.25（2300 rpm），
+# λ 下限 0.5 拒掉了 0.488 的部件保护加浓，最退点火 −40° 拒掉了 −43°。只写物理上确定的量级。
+^Fan activation temperature => degC 40 130
+^Sound tuning activation => degC -40 150
+^Exhaust gas temperature => degC 200 1150
+^Exhaust #\d => deg -60 90
+^Intake #\d => deg -60 90
+^Intake #\d => mm 0 12
+^Intake valve opening limitation => mm 0 12
+^Phase of injection => deg 0 720
+^Spark advance correction => deg BTDC -40 40
+^Minimum Spark Advance => deg BTDC -64 45
+^Spark advance base map => deg BTDC -35 65
+^Optimal Spark Advance => deg BTDC -35 65
+^Exhaust flaps => % 0 100
+^Torque request during take off condition => % 0 100
+^Upper speed threshold for leak detection => % 0 100
+^Volumetric efficiency => % 0 150
+^Turbine efficiency => kW 0 400
+^Maximum power limiter => kW 50 600
+^Lambda => Lambda 0.4 1.6
+^Injection (base map|at full load|enrichment) => Lambda 0.4 1.6
+^Requested Lambda => Lambda 0.4 1.6
+^Maximum speed of vehicle => km/h 0 400
+^Sound tuning activation => km/h 0 330
+^Upper speed threshold for leak detection => km/h 0 330
+^Limiter of Turbo pressure => hPa 0 4000
+^Limiter of differential Turbo pressure => hPa 0 4000
+^Lower limit for leakage determination => hPa 0 4000
+^Sport display calibration => Nm 0 2000

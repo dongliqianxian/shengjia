@@ -6,7 +6,7 @@ Recursively scans a calibration file library, records each file's path/extension
 extracts brand + ECU/microcontroller + SW/HW/Cal IDs from binary content, and (optionally)
 pre-scores every file against a target file using the L1-L5 matching rules.
 
-No external dependencies — plain Python 3. Runs in Claude Desktop, Codex, Cursor, or any shell.
+No external dependencies — plain Python 3. Runs in Kimi Work, Codex, Cursor, or any shell.
 
 Usage:
     python scan_library.py "E:\\ECU_Tuning_Projects"

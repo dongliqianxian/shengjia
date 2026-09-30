@@ -25,6 +25,11 @@ raw    = (工程量 − offset) / factor
 
 工具之间的数值差异，本质都是 **factor / offset / 数据类型 / 字节序** 四件事的差异。
 
+> ⚠️ **线性只是 COMPU_METHOD 的一种。** WinOLS/ECM Titanium 的 factor+offset 字段假设的都是
+> `PHYS = f(raw)`（相乘再相加）。但 A2L 里还有 **RAT_FUNC / FORMULA / 查表** 三类换算，
+> 其中 **RAT_FUNC 的系数方向是反的**（`INT = f(PHYS)`）——照抄进 factor 字段会把整张表求逆。
+> 遇到非线性换算走下面「非线性换算」一节，**不要**硬塞进上面的线性公式。
+
 ## 输入识别（先问清楚 4 件事）
 
 如果用户没说清，按顺序问：
@@ -99,8 +104,54 @@ python scripts/scale_convert.py solve --points "0:-128 255:63.25 128:-32"
 python scripts/scale_convert.py --selftest
 ```
 
-脚本只做线性 `phys = raw×factor + offset`；查表/分段/多项式换算不适用，按本技能正文
-人工处理。solve 反解的结果必须再用第三个已知点或传感器表交叉验证后才可用于写入。
+脚本只做线性 `phys = raw×factor + offset`；RAT_FUNC/FORMULA/查表按上面「非线性换算」一节处理
+（RAT_FUNC 线性特例可先折成 factor/offset 再喂脚本）。solve 反解的结果必须再用第三个已知点或
+传感器表交叉验证后才可用于写入。
+
+## 非线性换算（RAT_FUNC / FORMULA / 查表）
+
+A2L 的 `COMPU_METHOD` 有 6 种换算类型，线性只是其一。判据来源：ASAM MCD-2MC 标准 +
+pya2l `functions.py` 的正确实现（证据 A，已对照库源码）。
+
+| 类型 | 系数/内容 | 方向 | phys 怎么算 |
+|---|---|---|---|
+| `IDENTICAL` | 无 | — | `phys = raw` |
+| `LINEAR` | `COEFFS_LINEAR a b` | **PHYS=f(INT)** | `phys = a·raw + b` |
+| `RAT_FUNC` | `COEFFS a b c d e f` | **INT=f(PHYS)（反的！）** | 见下 |
+| `FORM`/`FORMULA` | 表达式字符串（可含 `X1`、`SYSTEM_CONSTANT`） | phys=f(raw) | 按表达式；可带 `FORMULA_INV` 求逆 |
+| `TAB_INTP` | 轴-值点对 | 查表 | 落在两点间**线性插值** |
+| `TAB_NOINTP` | 轴-值点对 | 查表 | 取邻近点，**不插值**（阶梯） |
+| `TAB_VERB`/`VTAB` | raw→文本枚举 | 查表 | `0="OFF" 1="ON"`，无数值含义 |
+
+### RAT_FUNC —— 头号陷阱：系数方向是反的
+
+标准定义 **`INT = (a·P² + b·P + c) / (d·P² + e·P + f)`**（`P`=物理量，`INT`=raw）。
+注意它把 **raw 表示成 phys 的函数**，和 LINEAR 恰好相反。绝大多数 ECU 的 RAT_FUNC 是
+「伪装成有理函数的线性」：**`a=d=e=0`**，于是 `INT = (b·P + c)/f`，反解得
+
+```
+phys = (f·raw − c) / b        →  等效线性:  factor = f/b ,  offset = −c/b
+```
+
+**换算到 WinOLS factor/offset 就用这两条。** 例：`COEFFS 0 128 0 0 0 1`（b=128,f=1）
+→ factor = 1/128 = 0.0078125，offset = 0（经典 λ ×1/128）。
+若把 `b=128` 当成乘数直接填 factor，结果差 **128²** 倍。
+
+- **`a≠0` 或 `d≠0`（真的二次/有理函数）**：一般无闭式逆，WinOLS 的线性字段表达不了 →
+  在工具里改这类表前必须确认工具是否按 RAT_FUNC 正确求逆，否则**只读不写**。
+- 判方向的自检：取一个已知工况点，正解 `INT=f(phys)` 和反解 `phys=f(raw)` 都算一遍，
+  与实测 raw 对得上的那个方向才对（doctrine §13.1，不许反向拟合刻度）。
+
+### FORMULA / 查表
+
+- **FORMULA**：任意表达式（如 `X1*0.75-48` 或含 `sqrt`、系统常量）。有 `FORMULA_INV` 就用它反解；
+  没有就只能数值求逆或只读。含 `SYSTEM_CONSTANT` 时必须先取到常量值，否则算不出。
+- **TAB_INTP vs TAB_NOINTP**：两者点对一样，**差别只在点与点之间**——一个线性插值、一个取阶梯。
+  写回时不要把 NOINTP 当 INTP 反算（会在台阶处系统性偏移）。
+- **TAB_VERB/VTAB 是枚举文本**，raw 是模式码不是物理量，**不参与任何缩放**，别乘 factor。
+
+> 这几类换算 `scripts/scale_convert.py` **不做**（它只算线性）。RAT_FUNC 的线性特例可先用上面
+> 两条公式折成 factor/offset 再喂脚本；真二次/FORMULA/查表交人工或 pya2l 库处理。
 
 ## 跨工具差异排查
 
@@ -111,6 +162,7 @@ python scripts/scale_convert.py --selftest
 | 全是大数字（>32000） | 字节序反了（Big/Little endian） |
 | 全是负数或跳到 65535 | 有符号 / 无符号识别错 |
 | 工程量正确但走势反了 | 表格行列顺序反了，或 1/λ 当成 λ |
+| 值像被整体求了逆 / 差了系数的平方 | RAT_FUNC 系数（`INT=f(PHYS)`）被当 LINEAR（`PHYS=f(INT)`）套了，见非线性换算一节 |
 | BitEdit 显示对，但写回 ECU 不动 | offset 错，写入值落在 ECU 不识别区 |
 
 ## 安全提示

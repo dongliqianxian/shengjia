@@ -108,6 +108,7 @@ description: >
 | WOT 容积式 | 优化 λ≈0.78 | 跑最热；间冷良好可 0.85 |
 | 空气建模误差 | <5% 可 / <3% 理想 / <1% OEM | 第一优先级判据 |
 | 爆震超压限 | 允许超压(bar)=RPM/1000 | 4000rpm→4bar |
+| **LSPI 禁区** | 直喷增压 **1200–2500 rpm × 高负荷** | **这一段不加点火提前**，见 §15 低速早燃禁区 |
 | EGT 上限 | ~870°C (1600°F) | FI 耐久红线 |
 | 铸铁发橙 | ~700°C (1300°F) | 目视温度参照 |
 | 点火趋势 | 随负荷↓、随转速↑ | 点火表形态自检 |
@@ -161,7 +162,7 @@ description: >
 |---|---|
 | `ecu-map-analysis` | 拆解单表时必须定位它在"输入→建模→输出"链中的角色（主控/限制器/修正量），并指出它依赖的上游空气模型是否可信。 |
 | `air-fuel-model-builder` | 空气建模是第一优先级（原则#3）：任何 load/torque/spark 结论前先确认 VE/MAF 模型达标档位（<5% 可接受 / <3% 理想 / <1% OEM，Banish）、MAF/MAP 未超量程、喷油器 duty 未打满；先部分负荷后 WOT（黄金顺序④⑤⑥）。 |
-| `torque-model-builder` | 建模层另一半（air-fuel-model-builder 的姊妹）：扭矩基础控制结构的**第一性原理方法论**（逆/正扭矩模型、扭矩储备、Level1-3 监控、抬扭须整条路径一致）。**强制空气优先**——逆扭矩模型输出是负荷目标，空气模型不可信先交 air-fuel-model-builder，不在坏空气模型上谈扭矩；各厂命名/限制器顺序交 `oem-strategy-library`，矩阵交 `stage1-calibration-matrix`，代码里找监控例程交 `ghidra-tricore-disasm`。 |
+| `torque-model-builder` | 建模层另一半（air-fuel-model-builder 的姊妹）：扭矩基础控制结构的**第一性原理方法论**（正/逆扭矩模型、扭矩储备、监控与干预、抬扭须整条路径一致）。**强制空气优先**——逆扭矩模型输出是负荷目标，空气模型不可信先交 air-fuel-model-builder，不在坏空气模型上谈扭矩；各厂命名、模型方向和监控层级交 `oem-strategy-library`，不得把某平台的 Level 1/2 命名套成通用三层架构；矩阵交 `stage1-calibration-matrix`，代码里找监控例程交 `ghidra-tricore-disasm`。 |
 | `closed-loop-control` | 控制层（与建模层平行）：**前馈(开环基础表) vs 反馈(闭环修正)分解**的方法论，落地黄金顺序第⑪步（trim<3%）。核心讲闭环如何吸收/掩盖/对抗基础表改动、trim 归账（把修正搬回基础表）、PID 行为（过冲/windup/权限饱和）、自适应快慢环与清值纪律。前置空气优先（trim 先排除传感器/MAF 误差）；不建 plant（air-fuel-model-builder）、不诊断 LOG（给 `hp-tuners-log-review` 判据）、不出命名（oem-strategy-library）。 |
 | `stage1-calibration-matrix` | 修改清单必须按**标定黄金顺序**排序（先空气/燃油后点火、先部分负荷后 WOT）；每项给数值锚点 + Balancing 取舍 + 第 5 节联动清单；功率上限以硬件瓶颈和空气误差档位（<5% 可接受 / <3% 理想）为约束。 |
 | `hp-tuners-log-review` | 诊断顺序：先判空气模型（MAF pegging/duty 打满）→ 再判 Balancing（爆震 vs 扭矩干预）→ 再判保护策略距阈值多远。用"20-30° 怠速点火摆动=负荷/转速拾取问题"等判据。 |
@@ -186,13 +187,15 @@ description: >
 | `winols-noread-remover` | 只除明文页脚 NOREAD 水印（空闲填充区），嵌入活动数据/加密的一律拒改；去除后必须 WinOLS 重导入验证 + checksum 重算（黄金顺序⑬交付闸门同样适用）。 |
 | `dtc-locator` | 给故障码找地址，以**无 A2L 字节级**为主：P 码按 J2012 编码成 2 字节→双字节序搜→以命中点为中心的升序 run 判可信度（HIGH/MEDIUM/LOW）；只做诊断/定位，字段确切含义交 `damos-a2l-parser`(DFC 标签)或 `ghidra-tricore-disasm`。 |
 | `edc17-platform` | Bosch EDC17 柴油**平台层**（TriCore 小端）：子型号(C/CP/P)识别、内存/基址、读写访问(OBD/bench/BSL 与读保护)、checksum 多层 CRC(非 RSA,可重算但走 WinOLS 插件)、柴油标定入口。字节交 `bosch-conti-bin-engine`、扭矩链交 `oem-strategy-library`§2.6 柴油共轨扭矩链、单表交 `ecu-map-analysis`。 |
-| `md1-platform` | Bosch MD1 柴油**平台层**（AURIX 小端）：与 EDC17 差异在**f32 数据 + RSA secure-boot**——cal CRC 可算但引导签名不可伪造，未经正确工具链签名的签名区改动会 brick，不得凭本地重算宣称可刷；读取常被锁是主门槛。（MG1=汽油,不在此。） |
+| `md1-platform` | Bosch MD1 柴油**平台层**（AURIX 小端）：与 EDC17 差异在**f32 数据 + RSA secure-boot**——cal CRC 可算但引导签名不可伪造，未经正确工具链签名的签名区改动会 brick，不得凭本地重算宣称可刷；读取常被锁是主门槛。（MG1=汽油,走 `mg1-platform`。） |
+| `mg1-platform` | Bosch MG1 汽油**平台层**（MDG1 世代，与 MD1 同硬件同容器）：子型号识别（**判同源看数据集 ID 不看软件号**）、**自描述容器三条坑**（两种头布局／A2L 地址=记录起点／`ROW_DIR` 使 WinOLS 显示可能转置）、汽油侧换算锚点（**点火必须按 SBYTE ×0.75° 读**）、以及**扭矩链闸门清单与副本数**（EA839 实测：限扭 21 份、需求 13 份、监控镜像 11 份…）。三条红线：低转速不加点火（§15）、不下调排温模型（§12.1 ①模型层）、不为动力动 KFMIRL/KFMIOP。RSA 签名与 TCU 同步同 `md1-platform`。数值矩阵交 `stage1-calibration-matrix`，移植交 `reference-tune-porting`，建 A2L 交 `bin-to-a2l`。 |
 | `dcm-platform` | Delphi/PHINIA DCM 柴油**平台层**：谱系(3.7/6.2/6.2AP/7.1AP)、字节序经 `multi-vendor-ecu-engine` 核定(TriCore→小端)、Delphi 命名≠Bosch DAMOS。**7.1AP 资料稀疏,强制置信度分级(✅可判/🔷推断须核对/❓未知),禁止把推断当事实**。 |
 | `idle-speed-calibration` | 定位怠速目标（**随水温递减的曲线**,有结构信号较可靠）并给修改边界；用共享引擎 `value_locate.py --preset idle_rpm --curve`；须确认 X 轴是水温、别与断油转速/换挡转速混淆；降怠速留足点火 trim + 进气余量,核对挂挡/空调/电负载偏移与柴油/涡轮怠速油压。字节交 bin 引擎、拆解交 `ecu-map-analysis`。 |
 | `speed-limiter-removal` | 定位最高限速（Vmax）并给解除策略；**标量搜索天生高误报**(0xFA=250 遍地),`value_locate.py` 只给候选,可靠确认靠 **diff 对比法 / ghidra 车速比较逻辑 / A2L**；分软切(还要抬起始降扭车速)vs硬切；多阈值逐个核对；TCU 侧限速转 `tcu-shift-calibration`。 |
-| `parallel-map-finder` | **种子驱动**的平行地图批量查找(同一 bin 内找相似副本):给已知一张表,按 **near-identical(数值接近=复制/监控镜像,一起改)+ shape-variant(相关高=缩放/偏移的模式/档位副本)** 两线找齐,防"漏改一环"(尤其 Level-2 监控镜像不同步→limp)。`parallel-map-finder/scripts/parallel_map_scan.py`。与 `blind-map-finder`(无种子盲扫)、`damos-a2l-parser`(按命名)、`ecu-calib-finder`(跨文件)互补;**轴用 identical、有辨识度 2D 表才用 shape**(轴 shape 会过匹配);功能判定交 `ecu-map-analysis`、谁读它交 `ghidra-tricore-disasm`、同族纳入 `stage1-calibration-matrix`。 |
+| `parallel-map-finder` | **种子驱动**的平行地图批量查找(同一 bin 内找相似副本):给已知一张表,按 **near-identical(数值接近=复制/候选监控镜像)+ shape-variant(相关高=缩放/偏移的模式/档位副本)** 两线找齐,防漏掉同族表。相似只能证明候选关系，不能自动判定“必须一起改”；监控镜像/包络必须经同版本定义或代码确认，必要时只做保形同步，禁止拉平、填满或关闭。`parallel-map-finder/scripts/parallel_map_scan.py`。与 `blind-map-finder`(无种子盲扫)、`damos-a2l-parser`(按命名)、`ecu-calib-finder`(跨文件)互补;**轴用 identical、有辨识度 2D 表才用 shape**(轴 shape 会过匹配);功能判定交 `ecu-map-analysis`、谁读它交 `ghidra-tricore-disasm`、同族纳入 `stage1-calibration-matrix`。 |
 | `powersports-ecu` | 动力运动域(摩托/ATV/船机/雪地车):不是徽标而是**控制域**——很多车**非扭矩结构(TPS 直控)**、空气模型多 **alpha-N(ITB)**、**按档位/按缸/副节气门(STV)**分表、专属刷写生态(Woolich/FTECU/TuneECU/Power Commander)。动手前先判"扭矩结构 vs TPS 直控"。字节序按核经 `multi-vendor-ecu-engine`(Keihin/Honda SH=大端);alpha-N 数学交 `air-fuel-model-builder`;按档位/按缸副本交 `parallel-map-finder`;O2 稀燃格交 `closed-loop-control`;赛道/越野照常。 |
 | `bin-to-a2l` | **自描述容器**平台（每张表自带行列数+轴）的编排链：探明标定容器 ABI → 穷举全表清单 → 物理闭环验证 → 产出分组 A2L。第①步探针判定"非自描述"→ **立即交回 `blind-map-finder`**，不硬撑。诚实边界：自描述平台上用 Ghidra/反汇编找 map **无效**，本技能不承诺代码级定位；**写出 A2L ≠ 知道每张表干嘛**，功能命名仍须人判断（交 `ecu-map-analysis`）；checksum 交 `checksum-crc-engine`。 |
+| `ecm-driver-to-a2l` | **已有厂商工具定义**（ECM Titanium 驱动树截图 / ECM 地址清单 / WinOLS 列表）+ 原厂 bin → 逐项可复核、按 ECM 分类树分组的 A2L + 补拍清单。刻度只认 **map 视图截图逐格闭合（显示÷raw 零离散）** 为 A，同分类同单位同宽度的家族外推为 B，仅量纲带为 C；`[N]` 副本逐份验证、不假设连续；`#N` 跨驱动版本不稳定，引用用「族名+地址」；显示 2 位小数、factor 全精度、上下限用数据类型范围。与 `bin-to-a2l` 分界：那个管无任何定义的自描述裸 bin。 |
 | `denso-rh850-map-inventory` | DENSO RH850 **代码侧**穷举全表清单（与 `blind-map-finder` 的形态盲扫互补）。xref 全落空时走**全局基址寄存器解锁**（`ghidra-ida-setup` §5 全局基址寄存器）；按已知物理量定位并证实交 `physical-constant-locator`；功能判定交 `ecu-map-analysis`。 |
 | `physical-constant-locator` | 定位**已知名字的物理常数**（主减速比/轮胎半径/各档速比/排量/喷油器流量）并升级为**代码证实的事实**。关键区别：用**物理关系**而非单个数值定位，误报比裸标量搜索低一到两个数量级，并顺带解出该 bin 的定点标度。只知道一个值 → 用 `speed-limiter-removal/scripts/value_locate.py`。**"候选"未经代码证实前不得当事实**（doctrine 原则#7 事实与解释分离）。 |
 | `reference-tune-porting` | **输入里有一份别人已改好的 MOD 时的强制入口**（这是二值判据，见 `stage1-calibration-matrix` 前置分流）：整文件 diff 聚簇 → 归属到命名 MAP → 逐条 keep/fix/drop → 跨文件移植的逐表证明。**判定规则不归它**，归 doctrine + `stage1-calibration-matrix`；识别出"骗扭矩"默认 **drop**（`torque-model-builder` §6.5 骗扭矩判据）；副本齐全性交 `parallel-map-finder`；checksum 交 `checksum-crc-engine`。 |
@@ -318,6 +321,7 @@ Banish 全书方法建立在「台架稳态保持某一转速/负荷点 + 宽氧
 | §12 | 扭矩模型政策 | `torque-policy.md` |
 | §13 | 逆向纪律 | `re-discipline.md` |
 | §14 | 物理边界速查(数值合理性钳制) | — |
+| §15 | 低速早燃(LSPI)禁区 | — |
 
 > **注意 §5 = 联动风险清单（即遗漏项检查清单）。** 历史上曾有文档把遗漏项清单编为 §12、
 > 证据等级编为 §5 —— 那是**另一版 doctrine 的编号**，与本文件不兼容。本文件的证据等级在**全局指令**里，
@@ -369,7 +373,7 @@ TCU 按 CAN 上收到的扭矩算夹紧力/油压。报低了 → 油压系统�
 ### 12.5 与 §5 联动风险清单的关系
 
 抬扭结论收尾时，§5 里的「TCU 扭矩监控」「Virtual/Inverse Torque 同步」两条**必查**；
-判「修正 vs 骗」的铁证见 `torque-model-builder` §6.5 骗扭矩判据（合法的模型修正不需要动独立监控阈值）。
+判「修正 vs 骗」的证据链见 `torque-model-builder` §6.5。合法模型修正不得关闭扭矩监控；若同软件版本的定义或代码证明存在独立监控镜像/包络，且新工作域确实越界，可做保形、保裕量的同步校正。只改监控阈值不能证明是在修正模型；无物理证据地拉平、填满或禁用监控，直接判为拒绝项。
 
 ---
 
@@ -482,3 +486,45 @@ TCU 按 CAN 上收到的扭矩算夹紧力/油压。报低了 → 油压系统�
 > 三条都是**廉价的自动检查**,应在交付前逐表跑一遍。
 > 判据来源:开源 ECU 工具 romHEX14 的 `detect_anomalies` / `validate_map_changes`
 > (证据 B 级 高概率推断 —— 判据本身合理且可复现,但其具体阈值未经本体系实车验证)。
+
+---
+
+## 15. 低速早燃(LSPI)禁区
+
+> **一句话红线:直喷增压机在 1200–2500 rpm × 高负荷这一段,不加点火提前。无例外。**
+
+客户会用"低速没劲""起步肉""低扭不够"来描述,然后问"低转速能不能加点火"。
+**答案是不能**,而且这不是保守取舍,是失效模式的性质决定的。
+
+### 15.1 为什么这一段不能碰
+
+| 理由 | 说明 |
+|---|---|
+| **LSPI 无前兆** | 低速早燃由缸内油滴/沉积物引发,**爆震传感器抓不到**,爆震闭环保护不了它。一次就能击穿活塞或连杆,不给渐进的预警 |
+| **裕量最窄** | §3 爆震超压判据 `允许超压(bar)≈RPM/1000` —— 1500 rpm 只允许 **1.5 bar**,是全转速范围最小值 |
+| **收益接近零** | 低转高负荷本来就压在爆震限上,点火已在 MBT 之前很远的位置被主动退掉。再给提前**几乎不产生扭矩**,只把裕量吃掉 |
+| **OEM 是刻意的** | 原厂在这一段同时**退点火 + 加浓**。那不是"没调好",是保命策略 |
+
+### 15.2 OEM 自己画的边界(可直接照抄)
+
+实测 Bosch MG1CS002 商业一阶程序(8 张点火 MAP,SBYTE ×0.75°):
+**+1.5°(raw +2)只加在 2000 rpm 以上,且只在 120/150/180 % 空气三列**,共 42 格。
+**2000 rpm 以下、以及中低负荷列,一格没动。**
+
+> 这条线可以当**默认安全边界**用:点火提前只在 `rpm ≥ 2000` 且 `负荷 ≥ 120 %rl` 的区域给。
+
+### 15.3 客户要"低速有劲"时的正确杠杆(点火不在里面)
+
+按优先级:
+
+1. **踏板/驾驶员需求图的形状** —— 保 WOT 的幂变换(见 `stage1-calibration-matrix`)。
+   这是"轻盈感"的真正来源,而且**不改变峰值、不碰模型、不碰点火**。
+2. **低转速增压建立** —— 废气门预定位 / 增压目标。真正让扭矩平台提前的东西,
+   但需要 LOG(转速/踏板/实际增压/目标增压/废气门占空比/点火回退量)。
+3. **TCU 换挡点与锁止策略** —— 不在 ECU 文件里,别在 ECU 里找。
+
+**必须对客户讲清的因果**:低转速的"有劲"来自**空气来得早**,不来自点火提前。
+把这句说透,后面就不用反复解释了。
+
+> 证据等级:LSPI 机理与"爆震传感器抓不到"为 **A**(行业共识 + OEM 策略可观测);
+> 2000 rpm / 120 %rl 这条具体边界为 **B**(单平台实测,跨平台需各自确认原厂点火表的改动边界)。

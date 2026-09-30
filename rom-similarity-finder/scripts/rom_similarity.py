@@ -91,12 +91,16 @@ MASK64 = (1 << 64) - 1
 MAXU = np.uint64(MASK64)
 BASE = 0x100000001B3        # FNV-1a prime,奇数 -> mod 2^64 可逆
 MIN_FILE = 4096             # 小于这个不索引(不够开窗)
+MIN_MATCH_BUCKETS = 4       # 命中桶数低于此值 -> containment 不可信,置 0(见 compare 注释)
+                            # K=128 时 4 桶 = J≈0.03;真命中远高于此(实测 13-31 桶)
 LOW_INFO_UNIQ = 0.30        # 唯一 shingle 占比低于此值 = 内容几乎全是重复/空白。
                             # 实测: 近乎空白的 EEPROM dump 只有 0.11(4616 B/501 distinct,
                             # 熵 0.72),正常 ECU bin > 0.9。这类文件彼此天然 1.000 分,
                             # 但对"找定义捐赠者"毫无价值,必须在输出里区分开。
 DEFAULT_EXT = "bin,ori,mod,rom,ecu,ori1,mod1"
-DEFAULT_DB = os.path.join(os.path.expanduser("~"), ".claude", "rom_index.sqlite")
+_DB_CANDIDATES = [os.path.join(os.path.expanduser("~"), ".agents", "rom_index.sqlite"),
+                  os.path.join(os.path.expanduser("~"), ".claude", "rom_index.sqlite")]
+DEFAULT_DB = next((p for p in _DB_CANDIDATES if os.path.exists(p)), _DB_CANDIDATES[0])
 
 
 # ---------------------------------------------------------------- 哈希核心
@@ -205,7 +209,18 @@ def compare(fa, na, fb, nb):
     inter = j * (na + nb) / (1.0 + j) if j > 0 else 0.0
     small = min(na, nb)
     c = min(1.0, inter / small) if small else 0.0
-    return dict(jaccard=j, containment=c, inter_est=inter,
+
+    # 【噪声底闸门】命中桶数太少时,Jaccard 的相对误差接近 ±100%,
+    # 由它反解出来的 containment 完全不可信 —— 而且会系统性地放大成假阳性:
+    # 大文件 vs 小文件时,即使只有 1/128 个桶偶然命中(J=0.008),
+    # 交集估计也可能超过小文件的全部基数,被钳成 containment=1.000 排到第一名。
+    # 实测: 512KB 的 .ori 查库,前 6 名全是 4KB 的 EEPROM/防盗文件,含入度全 1.000,
+    # 而第二阶段一个都对不齐 —— 全是噪声。
+    # 合法的"小块含在大文件里"命中桶数远高于此(实测 80KB in 400KB = 31 桶,
+    # 24KB 标定块 in 256KB ROM = 13 桶),所以这道闸门不会误伤真命中。
+    if match < MIN_MATCH_BUCKETS:
+        c = 0.0
+    return dict(jaccard=j, containment=c, inter_est=inter, match=match,
                 score=max(j, c), buckets=nboth)
 
 
@@ -435,6 +450,35 @@ def cmd_index(a):
     return 0
 
 
+DEF_EXT = {".a2l": "a2l", ".daf": "damos", ".dam": "damos",
+           ".ols": "ols", ".kp": "ols", ".xdf": "xdf"}
+_defs_cache = {}
+
+
+def _defs_beside(path):
+    """
+    候选文件【同一文件夹】里有没有定义文件。-> {'a2l','ols',...}
+
+    这是本技能存在的理由: 找到同源文件是【手段】,借它旁边的定义才是【目的】。
+    实测: 库里 3220 个已索引 bin 中,748 个(23%)同目录就躺着 .a2l/.ols/.kp/.daf,
+    但在这之前查询结果不显示,得人工去翻 —— 等于只干了一半。
+    按目录缓存,只对显示出来的 top-N 调用,开销可忽略。
+    """
+    d = os.path.dirname(path)
+    if d in _defs_cache:
+        return _defs_cache[d]
+    found = set()
+    try:
+        for f in os.listdir(d):
+            k = DEF_EXT.get(os.path.splitext(f)[1].lower())
+            if k:
+                found.add(k)
+    except OSError:
+        pass
+    _defs_cache[d] = found
+    return found
+
+
 def cmd_query(a):
     if not os.path.isfile(a.binpath):
         print("!! 找不到文件: %s" % a.binpath); return 2
@@ -483,16 +527,28 @@ def cmd_query(a):
     if not res:
         print("  无候选(score >= %.2f)。库里没有相似文件 -> 转 blind-map-finder 盲扫。" % a.min_score)
         con.close(); return 0
-    print("%-5s %8s %8s %10s %6s  %s" % ("#", "Jaccard", "含入度", "大小", "唯一率", "文件"))
-    lowinfo = 0
+    print("%-5s %8s %8s %10s %6s %-10s %s"
+          % ("#", "Jaccard", "含入度", "大小", "唯一率", "同目录定义", "文件"))
+    lowinfo, withdef = 0, 0
     for i, r in enumerate(res, 1):
         tag = ""
         if r["uniq"] < LOW_INFO_UNIQ:
             tag = "  << 低信息量"
             lowinfo += 1
-        print("%-5d %7.3f %8.3f %9dK %5.0f%%  %s%s"
+        defs = _defs_beside(r["path"])
+        if defs:
+            withdef += 1
+        print("%-5d %7.3f %8.3f %9dK %5.0f%% %-10s %s%s"
               % (i, r["jaccard"], r["containment"], r["size"] // 1024,
-                 100 * r["uniq"], r["path"], tag))
+                 100 * r["uniq"], (",".join(sorted(defs)) if defs else "-"),
+                 r["path"], tag))
+    if withdef:
+        print()
+        print("  ★ 有 %d 个候选的【同一文件夹里就有定义文件】—— 这正是找同源文件的目的。"
+              % withdef)
+        print("    .a2l/.daf 交 damos-a2l-parser,.ols/.kp 交 winols-ols-parser 解出命名+地址+换算。")
+        print("    **但相似 ≠ 定义可照搬**:软件版本不同时同一地址的表可能已挪位/改维度,")
+        print("    借来的定义仍须解码自检(值落物理带)+ ecu-map-analysis 判功能。")
     if lowinfo:
         print()
         print("  注: %d 个候选标为【低信息量】(唯一 shingle 占比 < %.0f%%) —— 内容几乎全是重复/空白。"
@@ -647,6 +703,19 @@ def selftest():
     chk(v4["aligned"] and v4["offset"] == 40000 - 9000,
         "多位置锚点: 共享 32KB 且不在开头时对上, offset=%s 锚点 %sB"
         % (v4["offset"], v4.get("anchor")))
+
+    # --- 8b. 噪声底闸门: 大文件 vs 无关小文件,不得因偶然命中 1 桶就给 containment=1 ---
+    # 实测触发场景: 512KB 的 .ori 查库,前 6 名全是 4KB 的 EEPROM/防盗文件,
+    # Jaccard 仅 0.008(=128 桶里命中 1 个,纯噪声)却因小文件基数极小被钳成含入度 1.000,
+    # 直接霸占前排,而第二阶段一个都对不齐。
+    tiny_unrel = bytes(rng.integers(0, 256, 4096, dtype=np.uint8))
+    ftu, ntu = fingerprint(tiny_unrel)
+    cn = compare(f1, n1, ftu, ntu)
+    chk(cn["containment"] < 0.5,
+        "400KB vs 无关 4KB: 含入度 %.3f < 0.5 (命中 %d 桶,不足 %d 则置 0)"
+        % (cn["containment"], cn["match"], MIN_MATCH_BUCKETS))
+    chk(cn["score"] < 0.10,
+        "  其 score %.3f 足够低,不会挤掉真命中" % cn["score"])
 
     # --- 9. 空桶处理 ---
     tiny = bytes(rng.integers(0, 256, 200, dtype=np.uint8))

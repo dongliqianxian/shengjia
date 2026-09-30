@@ -2,7 +2,7 @@
 """
 denso_bin.py — DENSO ECU binary read/write engine for the denso-bin-engine skill.
 
-Pure Python 3, no external dependencies. Runs in Claude Desktop, Codex, Cursor, or any shell.
+Pure Python 3, no external dependencies. Runs in Kimi Work, Codex, Cursor, or any shell.
 
 Purpose
 -------
