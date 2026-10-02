@@ -124,7 +124,7 @@ diff 看不出来 / 解码看不出来 / 写盘不报错 / checksum 也能算对
 
 ## 2.5 写入前 preflight 门禁(可执行,不是清单)
 
-**在写任何字节之前**,对整批目标表逐表算跨度并做两项检查。这是 doctrine §6.4 写入门禁的**可执行化**。
+**在写任何字节之前**,对整批目标表逐表算跨度并做两项检查。这是 doctrine §16 写入门禁的**可执行化**。
 
 ```
 span_bytes = rows × cols × size_bytes          # size_bytes 按实际 dtype,不写死 2
@@ -184,7 +184,7 @@ lo = addr ; hi = addr + span_bytes - 1
 副本齐全性交 `parallel-map-finder`;找同族用**共享轴的字节签名**扫描最省事
 (本次用 8 点转速轴签名在 0x10000 范围内扫出「恰好两处」,确认是一对而不是三张)。
 
-> *依据 doctrine §6.4 写入门禁的可执行化；分类轴源自 KingAiCodeForge/tunerpro-xdf-bin-cli-map-editor 的移植实践。*
+> *依据 doctrine §16 写入门禁的可执行化；分类轴源自 KingAiCodeForge/tunerpro-xdf-bin-cli-map-editor 的移植实践。*
 
 ## 3. 与其它技能划界(不重叠)
 

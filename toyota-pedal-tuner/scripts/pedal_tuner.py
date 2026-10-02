@@ -12,21 +12,24 @@ What it does
    varied curves are the OUTPUT (requested throttle/torque %), one per
    drive-mode / vehicle-speed bin.
 2. Decode every curve to engineering % and write a comparison table.
-3. Apply a "light throttle" transform to the OUTPUT curves only (axis untouched):
+3. Apply a "light throttle" transform to the OUTPUT curves only (axis untouched).
+   Two transforms are available; default is power:
 
-       new = old * (1 + K*(1 - old/FULL))
+       power  new = FULL * (old/FULL)^p           (p<1; lift concentrated at the
+                                                   bottom of travel, eats the dead zone)
+       taper  new = old * (1 + K*(1 - old/FULL))   (even lift, fades linearly to 0 at WOT)
 
-   Output-adaptive taper: low pedal gets the biggest lift, the boost fades to 0
-   at WOT. Idle (0) stays 0, WOT stays FULL, monotonicity preserved, never >FULL.
-   Default K = 0.25 (recommended daily "light but not twitchy").
+   Idle (0) stays 0, WOT stays FULL, monotonicity preserved, never >FULL.
+   Presets 柔和/正常/激进: power p=0.90/0.85/0.78 (正常/0.85 = default), taper K=0.15/0.25/0.38.
 4. Write <name>_Pedal.bin.  Checksum is NOT recomputed -> Auto-Fix before flash.
 
 Verified on: Lexus ES200 2017, DENSO 89663-33L93, pedal block @ 0x54C98-0x552D4.
 
 Usage
 -----
-  python pedal_tuner.py file.bin                      # K=0.25, auto-detect, write _Pedal.bin + table
-  python pedal_tuner.py file.bin --k 0.15             # gentler
+  python pedal_tuner.py file.bin                      # power 幂变换(默认, 正常档 p=0.85), auto-detect, write _Pedal.bin + table
+  python pedal_tuner.py file.bin --p 0.90             # gentler (柔和档)
+  python pedal_tuner.py file.bin --transform taper    # 线性锥度(默认 K=0.25): 全程均匀变轻
   python pedal_tuner.py file.bin --dry-run            # analyse + table only, no bin written
   python pedal_tuner.py file.bin --full 25600 --factor 256
   python pedal_tuner.py file.bin --data-addrs 0x54C98,0x54CDC,...   # override detection

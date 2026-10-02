@@ -9,7 +9,7 @@ description: >
   本技能是【平台策略/访问/识别层】：给出 MD1 子型号识别、AURIX 硬件、f32 数据特点、
   访问难点、以及关键的 RSA secure-boot 现实（cal CRC 可算但引导签名不可伪造，只能工具链处理）。
   它不做字节读写（bosch-conti-bin-engine）、不做单表拆解（ecu-map-analysis）、不重算 checksum
-  （checksum-crc-engine）、不出扭矩架构（oem-strategy-library §2.6 柴油共轨）。
+  （checksum-crc-engine）、不出扭矩架构（oem-strategy-library §1.3 柴油共轨）。
   运行于 ecu-calibration-doctrine 之下。
   边界：只做诊断/标定支持。
 ---
@@ -17,7 +17,7 @@ description: >
 # Bosch MD1 平台（现代柴油共轨 / AURIX / RSA secure-boot）
 
 MD1 是 EDC17 的下一代柴油 ECU，AURIX 平台。**与 EDC17 最大的区别不在标定逻辑，而在"读得到、
-写得进、签得回"这三关**——尤其是密码学签名。柴油扭矩链见 `oem-strategy-library` §2.6 柴油共轨扭矩链，
+写得进、签得回"这三关**——尤其是密码学签名。柴油扭矩链见 `oem-strategy-library` §1.3 柴油共轨扭矩链，
 字节解码带宽见 `bosch_conti_platforms.md`，本技能不重复。
 
 ## 1. 子型号识别
@@ -63,7 +63,7 @@ MD1 是 EDC17 的下一代柴油 ECU，AURIX 平台。**与 EDC17 最大的区�
 
 ## 4. 柴油标定入口
 
-标定逻辑与 EDC17 同源（见 `oem-strategy-library` §2.6 柴油限制链：烟度限制→增压→IQ→轨压→
+标定逻辑与 EDC17 同源（见 `oem-strategy-library` §1.3 柴油限制链：烟度限制→增压→IQ→轨压→
 EGT/涡轮/DPF 保护）。差异在**表可能是 f32、地址布局不同、且交付受签名约束**。分工同 EDC17：
 - 定义/地址：`damos-a2l-parser`（A2L）/`winols-ols-parser`（.ols）/`ghidra-tricore-disasm`（无定义）
 - 单表拆解：`ecu-map-analysis`；整套方案：`stage1-calibration-matrix`

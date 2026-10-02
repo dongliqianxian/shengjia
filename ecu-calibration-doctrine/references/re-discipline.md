@@ -192,7 +192,7 @@ ReVa 一类 MCP 工具同理：`ConstantSearch` / `Memory` 类工具优先于 `D
 
 ---
 
-## 七、校验和（补充 doctrine §6.5，交 `checksum-crc-engine` 执行）
+## 七、校验和（doctrine 校验和交付闸门——黄金顺序⑬前置，交 `checksum-crc-engine` 执行）
 
 以下全部来自两个真实实现，**不是推测**：
 
