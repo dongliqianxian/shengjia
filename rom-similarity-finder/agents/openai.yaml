@@ -1,0 +1,4 @@
+interface:
+  display_name: "ROM Similarity Finder"
+  short_description: "Find related ECU ROMs before blind map scanning"
+  default_prompt: "Use $rom-similarity-finder to index my ECU binary library and verify the closest ROM matches."

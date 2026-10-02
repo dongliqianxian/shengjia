@@ -1,0 +1,4 @@
+interface:
+  display_name: "WinOLS NOREAD Remover"
+  short_description: "Remove WinOLS re-import bans with ORI verification"
+  default_prompt: "Use $winols-noread-remover to scan this protected BIN and produce a verified editable copy without overwriting the original."

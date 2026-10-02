@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ghidra ECU Calibration XREF"
+  short_description: "Trace ECU calibration addresses through Ghidra"
+  default_prompt: "Use $ghidra-ecu-calibration-xref to trace this ECU calibration address and produce an evidence-graded XREF report."

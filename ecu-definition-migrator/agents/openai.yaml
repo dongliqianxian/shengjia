@@ -1,0 +1,4 @@
+interface:
+  display_name: "ECU Definition Migrator"
+  short_description: "跨软件版本迁移 A2L/OLS/KP MAP 定义"
+  default_prompt: "Use $ecu-definition-migrator to relocate verified MAP definitions from a known ECU software version to a new BIN and produce a confidence-scored migration report."

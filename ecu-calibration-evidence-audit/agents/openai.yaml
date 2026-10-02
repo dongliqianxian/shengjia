@@ -1,0 +1,4 @@
+interface:
+  display_name: "ECU Calibration Evidence Audit"
+  short_description: "Build evidence-graded ECU control-chain audit reports"
+  default_prompt: "Use $ecu-calibration-evidence-audit to audit this ECU calibration case and produce an evidence-graded control-chain report."
